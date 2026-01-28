@@ -42,7 +42,7 @@ export interface RegisteredResponse {
 
 /** 路由消息 */
 export interface RoutedMessage<T = unknown> {
-  /** 消息唯一ID */
+  /** 消息唯一ID (UUID v7，包含时间戳) */
   id: string;
   /** 用户ID（登录后填充） */
   uid: string | null;
@@ -54,8 +54,6 @@ export interface RoutedMessage<T = unknown> {
   action: string;
   /** 消息内容 */
   payload: T;
-  /** 时间戳 */
-  timestamp: string;
 }
 
 /** 发送失败响应 */

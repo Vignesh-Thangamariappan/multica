@@ -121,7 +121,6 @@ export class GatewayClient {
       to,
       action,
       payload,
-      timestamp: new Date().toISOString(),
     };
 
     this.socket.emit(GatewayEvents.SEND, message);
