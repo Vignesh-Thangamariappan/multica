@@ -498,7 +498,16 @@
     <div class="arrow-label">hub.ts &rarr; createSubagent()</div>
   </div>
 
-  <div class="chain-step phase-spawn" data-step="4">
+  <div class="chain-step phase-watch" data-step="4">
+    <div class="step-title">Write task to child (non-blocking)</div>
+    <div class="step-detail">
+      <code>childAgent.write(task)</code> enqueues the task to the serial queue.
+      This happens before registration so <code>waitForIdle()</code> observes queued work.
+    </div>
+    <div class="arrow-label">async-agent.ts &rarr; write() (enqueues to serial queue)</div>
+  </div>
+
+  <div class="chain-step phase-spawn" data-step="5">
     <div class="step-title">Register run in registry</div>
     <div class="step-detail">
       <code>registerSubagentRun()</code> saves record to in-memory Map + JSON file.
@@ -507,24 +516,15 @@
     <div class="arrow-label">registry.ts &rarr; registerSubagentRun()</div>
   </div>
 
-  <div class="chain-step phase-watch" data-step="5">
-    <div class="step-title">Start lifecycle watcher</div>
+  <div class="chain-step phase-watch" data-step="6">
+    <div class="step-title">Start lifecycle watcher &amp; return to parent</div>
     <div class="step-detail">
       <code>watchChildAgent()</code> sets <code>startedAt</code>.
       Attaches <code>childAgent.waitForIdle()</code> (promise resolves when task queue drained)
       and <code>childAgent.onClose()</code> callback. Optionally sets timeout timer.
+      Tool returns <code>{ status: "accepted", childSessionId, runId }</code> immediately.
     </div>
     <div class="arrow-label">registry.ts &rarr; watchChildAgent() &rarr; AsyncAgent.waitForIdle() + onClose()</div>
-  </div>
-
-  <div class="chain-step phase-watch" data-step="6">
-    <div class="step-title">Write task to child &amp; return to parent</div>
-    <div class="step-detail">
-      <code>childAgent.write(task)</code> enqueues the task (non-blocking).
-      Tool returns <code>{ status: "accepted", childSessionId, runId }</code> immediately.
-      Parent agent continues working.
-    </div>
-    <div class="arrow-label">async-agent.ts &rarr; write() (enqueues to serial queue)</div>
   </div>
 
   <div class="chain-step phase-watch" data-step="7">
@@ -615,17 +615,17 @@
   <line x1="470" y1="150" x2="815" y2="150" stroke="#39d2c0" stroke-width="1.5" marker-end="url(#seq-arrow-cyan)"/>
   <text x="640" y="144" text-anchor="middle" class="seq-text seq-mono" fill="#39d2c0">new AsyncAgent({ isSubagent: true })</text>
 
-  <!-- 4. Tool → Registry: registerSubagentRun -->
-  <line x1="295" y1="190" x2="635" y2="190" stroke="#d29922" stroke-width="1.5" marker-end="url(#seq-arrow-orange)"/>
-  <text x="465" y="184" text-anchor="middle" class="seq-text seq-mono" fill="#d29922">registerSubagentRun(params)</text>
+  <!-- 4. Tool → Child: write(task) -->
+  <line x1="295" y1="190" x2="815" y2="190" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#seq-arrow-blue)"/>
+  <text x="555" y="184" text-anchor="middle" class="seq-text seq-mono" fill="#58a6ff">childAgent.write(task)</text>
 
-  <!-- 5. Registry → Child: watchChildAgent (waitForIdle) -->
-  <line x1="640" y1="225" x2="815" y2="225" stroke="#d29922" stroke-width="1.5" stroke-dasharray="6 3" marker-end="url(#seq-arrow-orange)"/>
-  <text x="727" y="219" text-anchor="middle" class="seq-text seq-mono" fill="#d29922">waitForIdle() + onClose()</text>
+  <!-- 5. Tool → Registry: registerSubagentRun -->
+  <line x1="295" y1="225" x2="635" y2="225" stroke="#d29922" stroke-width="1.5" marker-end="url(#seq-arrow-orange)"/>
+  <text x="465" y="219" text-anchor="middle" class="seq-text seq-mono" fill="#d29922">registerSubagentRun(params)</text>
 
-  <!-- 6. Tool → Child: write(task) -->
-  <line x1="295" y1="260" x2="815" y2="260" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#seq-arrow-blue)"/>
-  <text x="555" y="254" text-anchor="middle" class="seq-text seq-mono" fill="#58a6ff">childAgent.write(task)</text>
+  <!-- 6. Registry → Child: watchChildAgent (waitForIdle) -->
+  <line x1="640" y1="260" x2="815" y2="260" stroke="#d29922" stroke-width="1.5" stroke-dasharray="6 3" marker-end="url(#seq-arrow-orange)"/>
+  <text x="727" y="254" text-anchor="middle" class="seq-text seq-mono" fill="#d29922">waitForIdle() + onClose()</text>
 
   <!-- 7. Tool → Parent: return accepted -->
   <line x1="290" y1="295" x2="110" y2="295" stroke="#3fb950" stroke-width="1.5" marker-end="url(#seq-arrow-green)"/>
