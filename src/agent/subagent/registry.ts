@@ -60,9 +60,12 @@ export function initSubagentRegistry(): void {
 
     if (!record.findingsCaptured) {
       captureFindings(record);
-      if (record.cleanup === "delete") {
-        deleteChildSession(record.childSessionId);
-      }
+    }
+
+    // Recovery cleanup must be independent from findings capture:
+    // the process may crash after captureFindings() persisted but before deletion.
+    if (record.cleanup === "delete" && !record.cleanupHandled) {
+      deleteChildSession(record.childSessionId);
     }
 
     affectedRequesters.add(record.requesterSessionId);
