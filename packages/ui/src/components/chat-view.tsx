@@ -38,6 +38,8 @@ export interface ChatViewProps {
   loadMore?: () => void;
   resolveApproval: (approvalId: string, decision: "allow-once" | "allow-always" | "deny") => void;
   onDisconnect?: () => void;
+  /** Optional action button in the error banner (e.g. "Configure Provider") */
+  errorAction?: { label: string; onClick: () => void };
 }
 
 export function ChatView({
@@ -53,6 +55,7 @@ export function ChatView({
   loadMore,
   resolveApproval,
   onDisconnect,
+  errorAction,
 }: ChatViewProps) {
   const mainRef = useRef<HTMLElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -219,16 +222,28 @@ export function ChatView({
         <div className="container px-4" role="alert" aria-live="polite">
           <div className="rounded-lg bg-destructive/5 border border-destructive/15 text-xs px-3 py-2 flex items-center justify-between gap-3">
             <span className="text-foreground leading-snug">{error.message}</span>
-            {onDisconnect && (
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={onDisconnect}
-                className="shrink-0 text-xs h-7 px-2.5"
-              >
-                Disconnect
-              </Button>
-            )}
+            <div className="flex items-center gap-2 shrink-0">
+              {errorAction && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={errorAction.onClick}
+                  className="shrink-0 text-xs h-7 px-2.5"
+                >
+                  {errorAction.label}
+                </Button>
+              )}
+              {onDisconnect && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={onDisconnect}
+                  className="shrink-0 text-xs h-7 px-2.5"
+                >
+                  Disconnect
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       )}

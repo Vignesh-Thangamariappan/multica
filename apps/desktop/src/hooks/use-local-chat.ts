@@ -142,6 +142,10 @@ export function useLocalChat() {
     [],
   )
 
+  const clearError = useCallback(() => {
+    chatRef.current.setError(null)
+  }, [])
+
   return {
     agentId,
     initError,
@@ -156,5 +160,6 @@ export function useLocalChat() {
     sendMessage,
     loadMore,
     resolveApproval,
+    clearError,
   }
 }
