@@ -212,10 +212,13 @@ export function createSessionsListTool(
           const status = resolveStatus(r);
           if (status === "running") {
             const elapsed = r.startedAt ? formatElapsed(now - r.startedAt) : "just spawned";
-            statusLines.push(`     ${idx}. [RUNNING] "${displayName}" (${elapsed})`);
+            statusLines.push(`     ${idx}. [RUNNING] "${displayName}" (${elapsed})  id:${r.runId}`);
           } else {
             const elapsed = r.startedAt && r.endedAt ? formatElapsed(r.endedAt - r.startedAt) : "";
-            statusLines.push(`     ${idx}. [${status.toUpperCase()}] "${displayName}" (${elapsed})`);
+            const findings = r.findingsCaptured
+              ? (r.findings ? r.findings.slice(0, 4000) + (r.findings.length > 4000 ? "…" : "") : "(no output)")
+              : "(findings not yet captured)";
+            statusLines.push(`     ${idx}. [${status.toUpperCase()}] "${displayName}" (${elapsed})  id:${r.runId}\n          Findings: ${findings}`);
           }
         }
       }
@@ -227,13 +230,13 @@ export function createSessionsListTool(
         const status = resolveStatus(r);
         if (status === "running") {
           const elapsed = r.startedAt ? formatElapsed(now - r.startedAt) : "just spawned";
-          statusLines.push(`  ${idx}. [RUNNING] "${displayName}" (${elapsed})`);
+          statusLines.push(`  ${idx}. [RUNNING] "${displayName}" (${elapsed})  id:${r.runId}`);
         } else {
           const elapsed = r.startedAt && r.endedAt ? formatElapsed(r.endedAt - r.startedAt) : "";
           const findings = r.findingsCaptured
-            ? (r.findings ? r.findings.slice(0, 200) + (r.findings.length > 200 ? "…" : "") : "(no output)")
+            ? (r.findings ? r.findings.slice(0, 4000) + (r.findings.length > 4000 ? "…" : "") : "(no output)")
             : "(findings not yet captured)";
-          statusLines.push(`  ${idx}. [${status.toUpperCase()}] "${displayName}" (${elapsed})\n      Findings: ${findings}`);
+          statusLines.push(`  ${idx}. [${status.toUpperCase()}] "${displayName}" (${elapsed})  id:${r.runId}\n      Findings: ${findings}`);
         }
       }
 

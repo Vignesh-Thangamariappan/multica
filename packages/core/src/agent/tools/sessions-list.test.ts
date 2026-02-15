@@ -47,6 +47,8 @@ describe("sessions_list tool", () => {
         startedAt: now - 60000,
         endedAt: now - 30000,
         outcome: { status: "ok" },
+        findings: "All tests passed successfully.",
+        findingsCaptured: true,
       }),
     );
     seedSubagentRunForTests(
@@ -56,6 +58,8 @@ describe("sessions_list tool", () => {
         startedAt: now - 60000,
         endedAt: now,
         outcome: { status: "error", error: "timeout" },
+        findings: "Lint check timed out.",
+        findingsCaptured: true,
       }),
     );
 
@@ -71,6 +75,13 @@ describe("sessions_list tool", () => {
     expect((text as { text: string }).text).toContain("Code Review");
     expect((text as { text: string }).text).toContain("Test Analysis");
     expect((text as { text: string }).text).toContain("Lint Check");
+    // Verify full runId is shown for completed runs
+    expect((text as { text: string }).text).toContain("id:run-aaa");
+    expect((text as { text: string }).text).toContain("id:run-bbb");
+    expect((text as { text: string }).text).toContain("id:run-ccc");
+    // Verify findings are shown for completed runs
+    expect((text as { text: string }).text).toContain("All tests passed successfully.");
+    expect((text as { text: string }).text).toContain("Lint check timed out.");
 
     expect(result.details!.runs).toHaveLength(3);
     expect(result.details!.runs[0]!.status).toBe("running");
@@ -139,6 +150,44 @@ describe("sessions_list tool", () => {
     const text = (result.content[0] as { text: string }).text;
     expect(text).toContain("No session ID available");
     expect(result.details).toEqual({ runs: [] });
+  });
+
+  it("shows findings for grouped completed runs", async () => {
+    const now = Date.now();
+    const groupId = "group-001";
+    seedSubagentRunForTests(
+      makeRecord({
+        runId: "run-g1",
+        label: "Bull Case Research",
+        startedAt: now - 60000,
+        endedAt: now - 10000,
+        outcome: { status: "ok" },
+        findings: "AI infrastructure capex growing 40% YoY.",
+        findingsCaptured: true,
+        groupId,
+      }),
+    );
+    seedSubagentRunForTests(
+      makeRecord({
+        runId: "run-g2",
+        label: "Bear Case Research",
+        startedAt: now - 60000,
+        endedAt: now - 5000,
+        outcome: { status: "ok" },
+        findings: "Valuation risk: forward P/E above historical average.",
+        findingsCaptured: true,
+        groupId,
+      }),
+    );
+
+    const tool = createSessionsListTool({ sessionId: "parent-001" });
+    const result = await tool.execute("call-1", {});
+
+    const text = (result.content[0] as { text: string }).text;
+    expect(text).toContain("id:run-g1");
+    expect(text).toContain("id:run-g2");
+    expect(text).toContain("AI infrastructure capex growing 40% YoY.");
+    expect(text).toContain("Valuation risk: forward P/E above historical average.");
   });
 
   it("shows findings status for running task", async () => {

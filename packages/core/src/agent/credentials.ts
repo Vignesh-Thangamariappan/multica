@@ -36,6 +36,7 @@ export type CredentialsConfig = {
 };
 
 const DEFAULT_CREDENTIALS_PATH = join(DATA_DIR, "credentials.json5");
+const FALLBACK_CREDENTIALS_PATH = join(homedir(), ".super-multica", "credentials.json5");
 
 function expandHome(value: string): string {
   if (value === "~") return homedir();
@@ -53,9 +54,34 @@ function isTestEnv(): boolean {
   );
 }
 
+/**
+ * Resolve the credentials file path.
+ *
+ * Lookup order:
+ * 1. SMC_CREDENTIALS_PATH env var (explicit override)
+ * 2. {DATA_DIR}/credentials.json5 (current data dir, respects SMC_DATA_DIR)
+ * 3. ~/.super-multica/credentials.json5 (default location fallback —
+ *    allows E2E tests and other custom SMC_DATA_DIR setups to
+ *    share the production credentials)
+ */
 export function getCredentialsPath(): string {
-  const raw = process.env.SMC_CREDENTIALS_PATH ?? DEFAULT_CREDENTIALS_PATH;
-  return expandHome(raw);
+  // Explicit env override — use as-is
+  if (process.env.SMC_CREDENTIALS_PATH) {
+    return expandHome(process.env.SMC_CREDENTIALS_PATH);
+  }
+
+  // Primary: current DATA_DIR
+  if (existsSync(DEFAULT_CREDENTIALS_PATH)) {
+    return DEFAULT_CREDENTIALS_PATH;
+  }
+
+  // Fallback: default ~/.super-multica location when using a custom data dir
+  if (DEFAULT_CREDENTIALS_PATH !== FALLBACK_CREDENTIALS_PATH && existsSync(FALLBACK_CREDENTIALS_PATH)) {
+    return FALLBACK_CREDENTIALS_PATH;
+  }
+
+  // Return primary path even if it doesn't exist (for error messages / creation)
+  return DEFAULT_CREDENTIALS_PATH;
 }
 
 export class CredentialManager {

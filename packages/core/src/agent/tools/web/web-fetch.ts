@@ -343,12 +343,14 @@ export function createWebFetchTool(): AgentTool<typeof WebFetchSchema, unknown> 
       } catch (error) {
         if (error instanceof SsrfBlockedError) {
           return jsonResult({
-            error: "ssrf_blocked",
+            error: true,
+            code: "ssrf_blocked",
             message: error.message,
           });
         }
         return jsonResult({
-          error: "fetch_failed",
+          error: true,
+          code: "fetch_failed",
           message: error instanceof Error ? error.message : String(error),
         });
       }

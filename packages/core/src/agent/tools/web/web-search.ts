@@ -135,7 +135,8 @@ export function createWebSearchTool(): AgentTool<typeof WebSearchSchema, unknown
         return jsonResult(result);
       } catch (error) {
         return jsonResult({
-          error: "search_failed",
+          error: true,
+          code: "search_failed",
           message: error instanceof Error ? error.message : String(error),
         });
       }

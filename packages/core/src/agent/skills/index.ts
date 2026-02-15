@@ -5,6 +5,7 @@
  * Compatible with OpenClaw/AgentSkills specification
  */
 
+import { dirname } from "path";
 import type { Skill, SkillManagerOptions, SkillsConfig, SkillCommandSpec, SkillInvocationResult } from "./types.js";
 import { loadAllSkills, getProfileSkillsDir, initializeManagedSkills, getManagedSkillsDir } from "./loader.js";
 import {
@@ -331,6 +332,11 @@ export class SkillManager {
 
         parts.push(`## ${emoji} ${name} (${id})`);
         parts.push(`${desc}\n`);
+
+        // Include skill directory path so the agent can resolve relative paths
+        // (e.g., scripts/recalc.py → /absolute/path/to/skill/scripts/recalc.py)
+        const skillDir = dirname(skill.filePath);
+        parts.push(`**Skill directory**: \`${skillDir}\`\n`);
 
         // Include full instructions
         if (skill.instructions) {

@@ -7,7 +7,7 @@
  */
 
 import { join } from "node:path";
-import { Agent } from "@multica/core";
+import { Agent, Hub, listSubagentRuns } from "@multica/core";
 import type { AgentOptions } from "@multica/core";
 import type { ToolsConfig } from "@multica/core";
 import { DATA_DIR } from "@multica/utils";
@@ -192,35 +192,90 @@ export async function runCommand(args: string[]): Promise<void> {
 
   const enableRunLog = opts.runLog || !!process.env.MULTICA_RUN_LOG;
 
-  const agent = new Agent({
-    profileId: opts.profile,
-    provider: opts.provider,
-    model: opts.model,
-    apiKey: opts.apiKey,
-    baseUrl: opts.baseUrl,
-    systemPrompt: opts.system,
-    thinkingLevel: opts.thinking as any,
-    reasoningMode: opts.reasoning as AgentOptions["reasoningMode"],
-    cwd: opts.cwd,
-    sessionId: opts.session,
-    debug: opts.debug,
-    enableRunLog,
-    tools: toolsConfig,
-  });
+  // Initialize Hub to enable full agent capabilities (sub-agents, channels, cron).
+  // Matches Desktop environment where Hub is always active.
+  // Gateway connection failures are non-blocking (auto-reconnect with backoff).
+  const gatewayUrl = process.env.GATEWAY_URL || "http://localhost:3000";
+  const hub = new Hub(gatewayUrl);
 
-  const sessionDir = join(DATA_DIR, "sessions", agent.sessionId);
+  try {
+    const agent = new Agent({
+      profileId: opts.profile,
+      provider: opts.provider,
+      model: opts.model,
+      apiKey: opts.apiKey,
+      baseUrl: opts.baseUrl,
+      systemPrompt: opts.system,
+      thinkingLevel: opts.thinking as any,
+      reasoningMode: opts.reasoning as AgentOptions["reasoningMode"],
+      cwd: opts.cwd,
+      sessionId: opts.session,
+      debug: opts.debug,
+      enableRunLog,
+      tools: toolsConfig,
+    });
 
-  // If it's a newly created session, notify user of sessionId
-  if (!opts.session) {
-    console.error(`[session: ${agent.sessionId}]`);
+    const sessionDir = join(DATA_DIR, "sessions", agent.sessionId);
+
+    // If it's a newly created session, notify user of sessionId
+    if (!opts.session) {
+      console.error(`[session: ${agent.sessionId}]`);
+    }
+    if (enableRunLog) {
+      console.error(`[session-dir: ${sessionDir}]`);
+    }
+
+    const result = await agent.run(finalPrompt);
+    if (result.error) {
+      console.error(`Error: ${result.error}`);
+      process.exitCode = 1;
+    }
+
+    // Wait for sub-agents to complete and parent to process their results.
+    // Without this, CLI exits before sub-agent announcements are delivered.
+    await waitForSubagents(agent);
+  } finally {
+    hub.shutdown();
   }
-  if (enableRunLog) {
-    console.error(`[session-dir: ${sessionDir}]`);
+}
+
+/**
+ * Wait for any running sub-agents to complete, then output their findings.
+ *
+ * In CLI mode, the parent Agent is not registered with the Hub, so the normal
+ * announce flow (Hub → writeInternal) can't deliver results. Instead, we poll
+ * the registry and print findings directly once all sub-agents finish.
+ *
+ * Max wait: 30 minutes (matches default sub-agent timeout).
+ */
+async function waitForSubagents(agent: Agent): Promise<void> {
+  const MAX_WAIT_MS = 30 * 60 * 1000;
+  const POLL_INTERVAL_MS = 2000;
+  const start = Date.now();
+
+  const allRuns = listSubagentRuns(agent.sessionId);
+  if (allRuns.length === 0) return;
+
+  // Phase 1: Wait for all sub-agent runs to finish
+  while (Date.now() - start < MAX_WAIT_MS) {
+    const runs = listSubagentRuns(agent.sessionId);
+    const running = runs.filter((r) => !r.endedAt);
+    if (running.length === 0) break;
+    console.error(dim(`[waiting for ${running.length} sub-agent(s)...]`));
+    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
   }
 
-  const result = await agent.run(finalPrompt);
-  if (result.error) {
-    console.error(`Error: ${result.error}`);
-    process.exitCode = 1;
+  // Phase 2: Output sub-agent findings directly (bypasses Hub announce flow)
+  const completedRuns = listSubagentRuns(agent.sessionId).filter((r) => r.endedAt);
+  if (completedRuns.length === 0) return;
+
+  console.error(dim(`[${completedRuns.length} sub-agent(s) completed]`));
+
+  for (const run of completedRuns) {
+    const displayName = run.label || run.task.slice(0, 60);
+    const status = run.outcome?.status ?? "unknown";
+    const findings = run.findings || "(no output)";
+    console.log(`\n--- Sub-agent: ${displayName} [${status}] ---`);
+    console.log(findings);
   }
 }
