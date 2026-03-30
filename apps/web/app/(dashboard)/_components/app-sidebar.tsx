@@ -16,6 +16,7 @@ import {
   SquarePen,
 } from "lucide-react";
 import { WorkspaceAvatar } from "@/features/workspace";
+import { useIssueDraftStore } from "@/features/issues/stores/draft-store";
 import {
   Sidebar,
   SidebarContent,
@@ -54,6 +55,12 @@ const workspaceNav = [
   { href: "/skills", label: "Skills", icon: BookOpenText },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
+
+function DraftDot() {
+  const hasDraft = useIssueDraftStore((s) => !!(s.draft.title || s.draft.description));
+  if (!hasDraft) return null;
+  return <span className="absolute top-0 right-0 size-1.5 rounded-full bg-brand" />;
+}
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -148,10 +155,11 @@ export function AppSidebar() {
             </SidebarMenu>
             <Tooltip>
               <TooltipTrigger
-                className="flex h-7 w-7 items-center justify-center rounded-lg bg-background text-foreground shadow-sm hover:bg-accent"
+                className="relative flex h-7 w-7 items-center justify-center rounded-lg bg-background text-foreground shadow-sm hover:bg-accent"
                 onClick={() => useModalStore.getState().open("create-issue")}
               >
                 <SquarePen className="size-3.5" />
+                <DraftDot />
               </TooltipTrigger>
               <TooltipContent side="bottom">New issue</TooltipContent>
             </Tooltip>

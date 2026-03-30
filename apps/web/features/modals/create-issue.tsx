@@ -30,6 +30,7 @@ import { StatusIcon, PriorityIcon } from "@/features/issues/components";
 import { ALL_STATUSES, STATUS_CONFIG, PRIORITY_ORDER, PRIORITY_CONFIG } from "@/features/issues/config";
 import { useWorkspaceStore, useActorName } from "@/features/workspace";
 import { useIssueStore } from "@/features/issues";
+import { useIssueDraftStore } from "@/features/issues/stores/draft-store";
 import { api } from "@/shared/api";
 
 // ---------------------------------------------------------------------------
@@ -66,14 +67,18 @@ export function CreateIssueModal({ onClose, data }: { onClose: () => void; data?
   const agents = useWorkspaceStore((s) => s.agents);
   const { getActorName, getActorInitials } = useActorName();
 
-  const [title, setTitle] = useState("");
+  const draft = useIssueDraftStore((s) => s.draft);
+  const setDraft = useIssueDraftStore((s) => s.setDraft);
+  const clearDraft = useIssueDraftStore((s) => s.clearDraft);
+
+  const [title, setTitle] = useState(draft.title);
   const descEditorRef = useRef<RichTextEditorRef>(null);
-  const [status, setStatus] = useState<IssueStatus>((data?.status as IssueStatus) || "todo");
-  const [priority, setPriority] = useState<IssuePriority>("none");
+  const [status, setStatus] = useState<IssueStatus>((data?.status as IssueStatus) || draft.status);
+  const [priority, setPriority] = useState<IssuePriority>(draft.priority);
   const [submitting, setSubmitting] = useState(false);
-  const [assigneeType, setAssigneeType] = useState<IssueAssigneeType | undefined>();
-  const [assigneeId, setAssigneeId] = useState<string | undefined>();
-  const [dueDate, setDueDate] = useState<string | null>(null);
+  const [assigneeType, setAssigneeType] = useState<IssueAssigneeType | undefined>(draft.assigneeType);
+  const [assigneeId, setAssigneeId] = useState<string | undefined>(draft.assigneeId);
+  const [dueDate, setDueDate] = useState<string | null>(draft.dueDate);
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Assignee popover
@@ -94,6 +99,16 @@ export function CreateIssueModal({ onClose, data }: { onClose: () => void; data?
 
   const dueDateObj = dueDate ? new Date(dueDate) : undefined;
 
+  // Sync field changes to draft store
+  const updateTitle = (v: string) => { setTitle(v); setDraft({ title: v }); };
+  const updateStatus = (v: IssueStatus) => { setStatus(v); setDraft({ status: v }); };
+  const updatePriority = (v: IssuePriority) => { setPriority(v); setDraft({ priority: v }); };
+  const updateAssignee = (type?: IssueAssigneeType, id?: string) => {
+    setAssigneeType(type); setAssigneeId(id);
+    setDraft({ assigneeType: type, assigneeId: id });
+  };
+  const updateDueDate = (v: string | null) => { setDueDate(v); setDraft({ dueDate: v }); };
+
   const handleSubmit = async () => {
     if (!title.trim() || submitting) return;
     setSubmitting(true);
@@ -108,6 +123,7 @@ export function CreateIssueModal({ onClose, data }: { onClose: () => void; data?
         due_date: dueDate || undefined,
       });
       useIssueStore.getState().addIssue(issue);
+      clearDraft();
       onClose();
     } catch {
       toast.error("Failed to create issue");
@@ -174,7 +190,7 @@ export function CreateIssueModal({ onClose, data }: { onClose: () => void; data?
             autoFocus
             type="text"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => updateTitle(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
@@ -190,7 +206,10 @@ export function CreateIssueModal({ onClose, data }: { onClose: () => void; data?
         <div className="flex-1 min-h-0 overflow-y-auto px-5">
           <RichTextEditor
             ref={descEditorRef}
+            defaultValue={draft.description}
             placeholder="Add description..."
+            onUpdate={(md) => setDraft({ description: md })}
+            debounceMs={500}
           />
         </div>
 
@@ -208,7 +227,7 @@ export function CreateIssueModal({ onClose, data }: { onClose: () => void; data?
             />
             <DropdownMenuContent align="start" className="w-44">
               {ALL_STATUSES.map((s) => (
-                <DropdownMenuItem key={s} onClick={() => setStatus(s)}>
+                <DropdownMenuItem key={s} onClick={() => updateStatus(s)}>
                   <StatusIcon status={s} className="size-3.5" />
                   <span>{STATUS_CONFIG[s].label}</span>
                 </DropdownMenuItem>
@@ -228,7 +247,7 @@ export function CreateIssueModal({ onClose, data }: { onClose: () => void; data?
             />
             <DropdownMenuContent align="start" className="w-44">
               {PRIORITY_ORDER.map((p) => (
-                <DropdownMenuItem key={p} onClick={() => setPriority(p)}>
+                <DropdownMenuItem key={p} onClick={() => updatePriority(p)}>
                   <PriorityIcon priority={p} />
                   <span>{PRIORITY_CONFIG[p].label}</span>
                 </DropdownMenuItem>
@@ -274,8 +293,7 @@ export function CreateIssueModal({ onClose, data }: { onClose: () => void; data?
                 <button
                   type="button"
                   onClick={() => {
-                    setAssigneeType(undefined);
-                    setAssigneeId(undefined);
+                    updateAssignee(undefined, undefined);
                     setAssigneeOpen(false);
                   }}
                   className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent transition-colors"
@@ -293,8 +311,7 @@ export function CreateIssueModal({ onClose, data }: { onClose: () => void; data?
                         type="button"
                         key={m.user_id}
                         onClick={() => {
-                          setAssigneeType("member");
-                          setAssigneeId(m.user_id);
+                          updateAssignee("member", m.user_id);
                           setAssigneeOpen(false);
                         }}
                         className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent transition-colors"
@@ -317,8 +334,7 @@ export function CreateIssueModal({ onClose, data }: { onClose: () => void; data?
                         type="button"
                         key={a.id}
                         onClick={() => {
-                          setAssigneeType("agent");
-                          setAssigneeId(a.id);
+                          updateAssignee("agent", a.id);
                           setAssigneeOpen(false);
                         }}
                         className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent transition-colors"
@@ -358,7 +374,7 @@ export function CreateIssueModal({ onClose, data }: { onClose: () => void; data?
                 mode="single"
                 selected={dueDateObj}
                 onSelect={(d: Date | undefined) => {
-                  setDueDate(d ? d.toISOString() : null);
+                  updateDueDate(d ? d.toISOString() : null);
                   setDueDateOpen(false);
                 }}
               />
@@ -368,7 +384,7 @@ export function CreateIssueModal({ onClose, data }: { onClose: () => void; data?
                     variant="ghost"
                     size="xs"
                     onClick={() => {
-                      setDueDate(null);
+                      updateDueDate(null);
                       setDueDateOpen(false);
                     }}
                     className="text-muted-foreground hover:text-foreground"
