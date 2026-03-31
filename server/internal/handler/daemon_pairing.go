@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -15,8 +14,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/multica-ai/multica/server/internal/auth"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
 
 const daemonPairingTTL = 10 * time.Minute
@@ -53,7 +50,6 @@ type DaemonPairingSessionResponse struct {
 	CreatedAt      string  `json:"created_at"`
 	UpdatedAt      string  `json:"updated_at"`
 	LinkURL        *string `json:"link_url,omitempty"`
-	DaemonToken    *string `json:"daemon_token,omitempty"`
 }
 
 type CreateDaemonPairingSessionRequest struct {
@@ -386,39 +382,5 @@ func (h *Handler) ClaimDaemonPairingSession(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	resp := daemonPairingSessionToResponse(rec, true)
-
-	// Issue a daemon auth token bound to the workspace and daemon.
-	if rec.WorkspaceID.Valid {
-		plainToken, err := auth.GenerateDaemonToken()
-		if err != nil {
-			slog.Error("failed to generate daemon token", "error", err)
-			writeError(w, http.StatusInternalServerError, "failed to generate daemon token")
-			return
-		}
-		hash := auth.HashToken(plainToken)
-
-		// Revoke any existing tokens for this workspace+daemon pair.
-		_ = h.Queries.DeleteDaemonTokensByWorkspaceAndDaemon(r.Context(), db.DeleteDaemonTokensByWorkspaceAndDaemonParams{
-			WorkspaceID: rec.WorkspaceID,
-			DaemonID:    rec.DaemonID,
-		})
-
-		_, err = h.Queries.CreateDaemonToken(r.Context(), db.CreateDaemonTokenParams{
-			TokenHash:   hash,
-			WorkspaceID: rec.WorkspaceID,
-			DaemonID:    rec.DaemonID,
-			ExpiresAt:   pgtype.Timestamptz{Time: time.Now().Add(365 * 24 * time.Hour), Valid: true},
-		})
-		if err != nil {
-			slog.Error("failed to store daemon token", "error", err)
-			writeError(w, http.StatusInternalServerError, "failed to store daemon token")
-			return
-		}
-
-		resp.DaemonToken = &plainToken
-		slog.Info("daemon token issued", "daemon_id", rec.DaemonID, "workspace_id", uuidToPtr(rec.WorkspaceID))
-	}
-
-	writeJSON(w, http.StatusOK, resp)
+	writeJSON(w, http.StatusOK, daemonPairingSessionToResponse(rec, true))
 }
