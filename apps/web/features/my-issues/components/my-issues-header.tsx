@@ -164,7 +164,7 @@ export function MyIssuesHeader({ allIssues }: { allIssues: Issue[] }) {
               render={
                 <TooltipTrigger
                   render={
-                    <Button variant="outline" size="icon-sm" className="relative">
+                    <Button variant="outline" size="icon-sm" className="relative text-muted-foreground">
                       <Filter className="size-4" />
                       {hasActiveFilters && (
                         <span className="absolute top-0 right-0 size-1.5 rounded-full bg-brand" />
@@ -268,7 +268,7 @@ export function MyIssuesHeader({ allIssues }: { allIssues: Issue[] }) {
               render={
                 <TooltipTrigger
                   render={
-                    <Button variant="outline" size="icon-sm">
+                    <Button variant="outline" size="icon-sm" className="text-muted-foreground">
                       <SlidersHorizontal className="size-4" />
                     </Button>
                   }
@@ -356,7 +356,7 @@ export function MyIssuesHeader({ allIssues }: { allIssues: Issue[] }) {
               render={
                 <TooltipTrigger
                   render={
-                    <Button variant="outline" size="icon-sm">
+                    <Button variant="outline" size="icon-sm" className="text-muted-foreground">
                       {viewMode === "board" ? (
                         <Columns3 className="size-4" />
                       ) : (

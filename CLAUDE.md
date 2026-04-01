@@ -197,6 +197,16 @@ make start-worktree     # Start using .env.worktree
   - `test(scope): ...`
   - `chore(scope): ...`
 
+## CLI Release
+
+**Prerequisite:** A CLI release must accompany every Production deployment. When deploying to Production, always release a new CLI version as part of the process.
+
+1. Create a tag on the `main` branch: `git tag v0.x.x`
+2. Push the tag: `git push origin v0.x.x`
+3. GitHub Actions automatically triggers `release.yml`: runs Go tests → GoReleaser builds multi-platform binaries → publishes to GitHub Releases + Homebrew tap
+
+By default, bump the patch version each release (e.g. `v0.1.12` → `v0.1.13`), unless the user specifies a specific version.
+
 ## Minimum Pre-Push Checks
 
 ```bash
