@@ -881,6 +881,9 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, taskLo
 	}
 	if task.Agentflow != nil {
 		taskCtx.AgentflowPrompt = task.Agentflow.Description
+		taskLog.Info("agentflow context set", "prompt_len", len(task.Agentflow.Description), "title", task.Agentflow.Title)
+	} else if task.AgentflowRunID != "" {
+		taskLog.Warn("agentflow run ID set but no agentflow data received from server", "agentflow_run_id", task.AgentflowRunID)
 	}
 
 	// Try to reuse the workdir from a previous task on the same (agent, issue) pair.
@@ -914,6 +917,7 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, taskLo
 	var prompt string
 	if task.AgentflowRunID != "" {
 		prompt = BuildAgentflowPrompt(task)
+		taskLog.Info("using agentflow prompt", "agentflow_run_id", task.AgentflowRunID, "has_agentflow", task.Agentflow != nil)
 	} else {
 		prompt = BuildPrompt(task)
 	}
