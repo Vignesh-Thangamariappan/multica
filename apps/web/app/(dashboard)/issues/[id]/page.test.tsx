@@ -63,34 +63,11 @@ vi.mock("@/features/workspace", () => ({
   }),
 }));
 
-// Mock issue store — supply a stable full issue object so storeIssue
-// doesn't create a new reference each render (avoids infinite effect loop)
-// and has all required fields for rendering.
-const stableStoreIssues = vi.hoisted(() => [
-  {
-    id: "issue-1",
-    workspace_id: "ws-1",
-    number: 1,
-    identifier: "TES-1",
-    title: "Implement authentication",
-    description: "Add JWT auth to the backend",
-    status: "in_progress",
-    priority: "high",
-    assignee_type: "member",
-    assignee_id: "user-1",
-    creator_type: "member",
-    creator_id: "user-1",
-    parent_issue_id: null,
-    position: 0,
-    due_date: "2026-06-01T00:00:00Z",
-    created_at: "2026-01-15T00:00:00Z",
-    updated_at: "2026-01-20T00:00:00Z",
-  },
-]);
+// Mock issue store — only client state remains (activeIssueId)
 vi.mock("@/features/issues", () => ({
   useIssueStore: Object.assign(
-    (selector: (s: any) => any) => selector({ issues: stableStoreIssues }),
-    { getState: () => ({ issues: stableStoreIssues, addIssue: vi.fn(), updateIssue: vi.fn(), removeIssue: vi.fn() }) },
+    (selector: (s: any) => any) => selector({ activeIssueId: null }),
+    { getState: () => ({ activeIssueId: null, setActiveIssue: vi.fn() }) },
   ),
 }));
 

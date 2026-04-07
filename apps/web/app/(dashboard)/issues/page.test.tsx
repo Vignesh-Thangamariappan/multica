@@ -71,28 +71,19 @@ vi.mock("@/shared/api", () => ({
   },
 }));
 
-// Mock the issue store
-let mockStoreState: {
-  issues: Issue[];
-  loading: boolean;
-  fetch: () => Promise<void>;
-  setIssues: (issues: Issue[]) => void;
-  addIssue: (issue: Issue) => void;
-  updateIssue: (id: string, updates: Partial<Issue>) => void;
-  removeIssue: (id: string) => void;
-};
-
+// Mock issue store — only client state remains
+const mockIssueClientState = { activeIssueId: null, setActiveIssue: vi.fn() };
 vi.mock("@/features/issues/store", () => ({
   useIssueStore: Object.assign(
-    (selector?: any) => (selector ? selector(mockStoreState) : mockStoreState),
-    { getState: () => mockStoreState },
+    (selector?: any) => (selector ? selector(mockIssueClientState) : mockIssueClientState),
+    { getState: () => mockIssueClientState },
   ),
 }));
 
 vi.mock("@/features/issues", () => ({
   useIssueStore: Object.assign(
-    (selector?: any) => (selector ? selector(mockStoreState) : mockStoreState),
-    { getState: () => mockStoreState },
+    (selector?: any) => (selector ? selector(mockIssueClientState) : mockIssueClientState),
+    { getState: () => mockIssueClientState },
   ),
   StatusIcon: () => null,
   PriorityIcon: () => null,
@@ -292,30 +283,18 @@ function renderWithQuery(ui: React.ReactElement) {
 describe("IssuesPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockStoreState = {
-      issues: [],
-      loading: true,
-      fetch: vi.fn(),
-      setIssues: vi.fn(),
-      addIssue: vi.fn(),
-      updateIssue: vi.fn(),
-      removeIssue: vi.fn(),
-    };
+    mockListIssues.mockResolvedValue({ issues: [], total: 0 });
     mockViewState.viewMode = "board";
     mockViewState.statusFilters = [];
     mockViewState.priorityFilters = [];
   });
 
   it("shows loading state initially", () => {
-    mockStoreState.loading = true;
-    mockStoreState.issues = [];
     renderWithQuery(<IssuesPage />);
     expect(screen.getAllByRole("generic").some(el => el.getAttribute("data-slot") === "skeleton")).toBe(true);
   });
 
   it("renders issues in board view after loading", async () => {
-    mockStoreState.loading = false;
-    mockStoreState.issues = mockIssues;
     mockListIssues.mockResolvedValue({ issues: mockIssues, total: mockIssues.length });
 
     renderWithQuery(<IssuesPage />);
@@ -326,8 +305,6 @@ describe("IssuesPage", () => {
   });
 
   it("renders board columns", async () => {
-    mockStoreState.loading = false;
-    mockStoreState.issues = mockIssues;
     mockListIssues.mockResolvedValue({ issues: mockIssues, total: mockIssues.length });
 
     renderWithQuery(<IssuesPage />);
@@ -340,18 +317,12 @@ describe("IssuesPage", () => {
   });
 
   it("shows workspace breadcrumb", async () => {
-    mockStoreState.loading = false;
-    mockStoreState.issues = [];
-
     renderWithQuery(<IssuesPage />);
 
     await screen.findByText("Issues");
   });
 
   it("shows scope buttons", async () => {
-    mockStoreState.loading = false;
-    mockStoreState.issues = [];
-
     renderWithQuery(<IssuesPage />);
 
     await screen.findByText("All");
@@ -360,8 +331,6 @@ describe("IssuesPage", () => {
   });
 
   it("shows filter and display icon buttons", async () => {
-    mockStoreState.loading = false;
-    mockStoreState.issues = mockIssues;
     mockListIssues.mockResolvedValue({ issues: mockIssues, total: mockIssues.length });
 
     renderWithQuery(<IssuesPage />);
@@ -373,9 +342,6 @@ describe("IssuesPage", () => {
   });
 
   it("shows empty board view when no issues exist", () => {
-    mockStoreState.loading = false;
-    mockStoreState.issues = [];
-
     renderWithQuery(<IssuesPage />);
 
     // Should still render the board/list view, not a "no issues" message
