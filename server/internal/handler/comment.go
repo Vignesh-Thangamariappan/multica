@@ -357,9 +357,8 @@ func (h *Handler) isReplyToMemberThread(parent *db.Comment, content string, issu
 // re-triggered by subsequent replies in the same thread — unless the reply
 // explicitly @mentions only non-agent entities (members, issues), which
 // signals the user is talking to other people and not the agent.
-// Skips self-mentions, agents that are already the issue's assignee (handled
-// by on_comment), agents with on_mention trigger disabled, and private agents
-// mentioned by non-owner members (only the agent owner or workspace
+// Skips self-mentions, agents with on_mention trigger disabled, and private
+// agents mentioned by non-owner members (only the agent owner or workspace
 // admin/owner can mention a private agent).
 // Note: no status gate here — @mention is an explicit action and should work
 // even on done/cancelled issues (the agent can reopen the issue if needed).
@@ -404,17 +403,6 @@ func (h *Handler) enqueueMentionedAgentTasks(ctx context.Context, issue db.Issue
 			continue
 		}
 		agentUUID := parseUUID(m.ID)
-		// Prevent duplicate: skip if this agent is the issue's assignee
-		// (already handled by the on_comment trigger above) — but only
-		// when the issue is in a non-terminal status where on_comment
-		// will actually fire. For done/cancelled issues on_comment is
-		// suppressed, so an explicit @mention must still go through.
-		isAssignee := issue.AssigneeType.Valid && issue.AssigneeType.String == "agent" &&
-			issue.AssigneeID.Valid && uuidToString(issue.AssigneeID) == m.ID
-		isTerminal := issue.Status == "done" || issue.Status == "cancelled"
-		if isAssignee && !isTerminal {
-			continue
-		}
 		// Load the agent to check visibility, archive status, and trigger config.
 		agent, err := h.Queries.GetAgent(ctx, agentUUID)
 		if err != nil || !agent.RuntimeID.Valid || agent.ArchivedAt.Valid {
