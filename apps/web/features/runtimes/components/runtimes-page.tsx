@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/features/auth";
 import { useWorkspaceId } from "@core/hooks";
 import { runtimeListOptions, runtimeKeys } from "@core/runtimes/queries";
+import { useRuntimesWithUpdates } from "@core/runtimes/use-runtime-updates";
 import { useWSEvent } from "@/features/realtime";
 import { RuntimeList } from "./runtime-list";
 import { RuntimeDetail } from "./runtime-detail";
@@ -22,6 +23,7 @@ export default function RuntimesPage() {
   const wsId = useWorkspaceId();
   const qc = useQueryClient();
   const { data: runtimes = [], isLoading: fetching } = useQuery(runtimeListOptions(wsId));
+  const updateIds = useRuntimesWithUpdates(wsId);
   const [selectedId, setSelectedId] = useState("");
 
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({
@@ -95,6 +97,7 @@ export default function RuntimesPage() {
           runtimes={runtimes}
           selectedId={effectiveSelectedId}
           onSelect={setSelectedId}
+          updateIds={updateIds}
         />
       </ResizablePanel>
 

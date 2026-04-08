@@ -1,14 +1,21 @@
-import { Server } from "lucide-react";
+import { Server, ArrowUpCircle } from "lucide-react";
 import type { AgentRuntime } from "@/shared/types";
 import { RuntimeModeIcon } from "./shared";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 
 function RuntimeListItem({
   runtime,
   isSelected,
+  hasUpdate,
   onClick,
 }: {
   runtime: AgentRuntime;
   isSelected: boolean;
+  hasUpdate: boolean;
   onClick: () => void;
 }) {
   return (
@@ -31,11 +38,21 @@ function RuntimeListItem({
           {runtime.provider} &middot; {runtime.runtime_mode}
         </div>
       </div>
-      <div
-        className={`h-2 w-2 shrink-0 rounded-full ${
-          runtime.status === "online" ? "bg-success" : "bg-muted-foreground/40"
-        }`}
-      />
+      <div className="flex shrink-0 items-center gap-2">
+        {hasUpdate && (
+          <Tooltip>
+            <TooltipTrigger className="flex items-center">
+              <ArrowUpCircle className="h-3.5 w-3.5 text-brand" />
+            </TooltipTrigger>
+            <TooltipContent side="left">Update available</TooltipContent>
+          </Tooltip>
+        )}
+        <div
+          className={`h-2 w-2 rounded-full ${
+            runtime.status === "online" ? "bg-success" : "bg-muted-foreground/40"
+          }`}
+        />
+      </div>
     </button>
   );
 }
@@ -44,10 +61,12 @@ export function RuntimeList({
   runtimes,
   selectedId,
   onSelect,
+  updateIds,
 }: {
   runtimes: AgentRuntime[];
   selectedId: string;
   onSelect: (id: string) => void;
+  updateIds?: Set<string>;
 }) {
   return (
     <div className="overflow-y-auto h-full border-r">
@@ -79,6 +98,7 @@ export function RuntimeList({
               key={runtime.id}
               runtime={runtime}
               isSelected={runtime.id === selectedId}
+              hasUpdate={updateIds?.has(runtime.id) ?? false}
               onClick={() => onSelect(runtime.id)}
             />
           ))}

@@ -47,6 +47,7 @@ import { useQuery } from "@tanstack/react-query";
 import { inboxKeys, deduplicateInboxItems } from "@core/inbox/queries";
 import { api } from "@/shared/api";
 import { useModalStore } from "@/features/modals";
+import { useRuntimeUpdateCount } from "@core/runtimes/use-runtime-updates";
 
 const primaryNav = [
   { href: "/inbox", label: "Inbox", icon: Inbox },
@@ -65,6 +66,13 @@ function DraftDot() {
   const hasDraft = useIssueDraftStore((s) => !!(s.draft.title || s.draft.description));
   if (!hasDraft) return null;
   return <span className="absolute top-0 right-0 size-1.5 rounded-full bg-brand" />;
+}
+
+function RuntimeUpdateDot() {
+  const wsId = useWorkspaceStore((s) => s.workspace?.id);
+  const count = useRuntimeUpdateCount(wsId);
+  if (count === 0) return null;
+  return <span className="size-1.5 rounded-full bg-brand" />;
 }
 
 export function AppSidebar() {
@@ -224,6 +232,7 @@ export function AppSidebar() {
                       >
                         <item.icon />
                         <span>{item.label}</span>
+                        {item.label === "Runtimes" && <RuntimeUpdateDot />}
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   );
