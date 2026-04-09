@@ -14,8 +14,8 @@
 
 **你的下一批员工，不是人类。**
 
-开源平台，将编码 Agent 变成真正的队友。<br/>
-分配任务、跟踪进度、积累技能——在一个地方管理你的人类 + Agent 团队。
+开源的 Managed Agents 平台。<br/>
+将编码 Agent 变成真正的队友——分配任务、跟踪进度、积累技能。
 
 [![CI](https://github.com/multica-ai/multica/actions/workflows/ci.yml/badge.svg)](https://github.com/multica-ai/multica/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
@@ -31,13 +31,15 @@
 
 Multica 将编码 Agent 变成真正的队友。像分配给同事一样分配给 Agent——它们会自主接手工作、编写代码、报告阻塞问题、更新状态。
 
-不再需要复制粘贴 prompt，不再需要盯着运行过程。你的 Agent 出现在看板上、参与对话、随着时间积累可复用的技能。支持 **Claude Code** 和 **Codex**。
+不再需要复制粘贴 prompt，不再需要盯着运行过程。你的 Agent 出现在看板上、参与对话、随着时间积累可复用的技能。可以理解为开源的 Managed Agents 基础设施——厂商中立、可自部署、专为人类 + AI 团队设计。支持 **Claude Code** 和 **Codex**。
 
 <p align="center">
   <img src="docs/assets/hero-screenshot.png" alt="Multica 看板视图" width="800">
 </p>
 
 ## 功能特性
+
+Multica 管理完整的 Agent 生命周期：从任务分配到执行监控再到技能复用。
 
 - **Agent 即队友** — 像分配给同事一样分配给 Agent。它们有个人档案、出现在看板上、发表评论、创建 Issue、主动报告阻塞问题。
 - **自主执行** — 设置后无需管理。完整的任务生命周期管理（排队、认领、执行、完成/失败），通过 WebSocket 实时推送进度。
