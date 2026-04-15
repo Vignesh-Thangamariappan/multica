@@ -498,13 +498,13 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
                   </p>
                 </div>
               </PopoverTrigger>
-              <PopoverContent side="top" sideOffset={8} align="start" className="w-64 p-0">
-                <div className="flex items-center gap-3 p-3 border-b">
+              <PopoverContent side="top" sideOffset={8} align="start" className="w-48 p-0">
+                <div className="flex items-center gap-2.5 px-2.5 py-2 border-b">
                   <ActorAvatar
                     name={user?.name ?? ""}
                     initials={(user?.name ?? "U").charAt(0).toUpperCase()}
                     avatarUrl={user?.avatar_url}
-                    size={36}
+                    size={32}
                   />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">
