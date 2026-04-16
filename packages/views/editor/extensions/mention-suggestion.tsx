@@ -221,11 +221,6 @@ function MentionRow({
 // Suggestion config factory
 // ---------------------------------------------------------------------------
 
-// Module-scoped state coordinates debounce/abort across successive items()
-// calls so that only the latest query's server-side issue search resolves.
-let issueSearchSeq = 0;
-let issueSearchAbort: AbortController | null = null;
-
 function issueToMention(i: Pick<Issue, "id" | "identifier" | "title" | "status">): MentionItem {
   return {
     id: i.id,
@@ -236,93 +231,126 @@ function issueToMention(i: Pick<Issue, "id" | "identifier" | "title" | "status">
   };
 }
 
-async function searchIssueMentions(
-  qc: QueryClient,
-  wsId: string,
-  q: string,
-): Promise<MentionItem[]> {
-  // Each call supersedes the previous one — bump the seq and abort any
-  // in-flight fetch so a stale response can't overwrite newer suggestions.
-  if (issueSearchAbort) issueSearchAbort.abort();
-  const seq = ++issueSearchSeq;
-
-  // Empty query: surface recently-touched cached issues (instant, no fetch)
-  if (q === "") {
-    const cached: Issue[] =
-      qc.getQueryData<ListIssuesResponse>(issueKeys.list(wsId))?.issues ?? [];
-    return cached.slice(0, 10).map(issueToMention);
-  }
-
-  // Server-side search includes done/cancelled via include_closed=true,
-  // so done issues are findable even when not in the local cache.
-  // Debounce: skip the fetch if a newer keystroke arrives within 150ms.
-  await new Promise((r) => setTimeout(r, 150));
-  if (seq !== issueSearchSeq) return [];
-
-  const controller = new AbortController();
-  issueSearchAbort = controller;
-  try {
-    const res = await api.searchIssues({
-      q,
-      limit: 10,
-      include_closed: true,
-      signal: controller.signal,
-    });
-    if (seq !== issueSearchSeq) return [];
-    return res.issues.map(issueToMention);
-  } catch {
-    return [];
-  }
-}
+const MAX_ITEMS = 15;
 
 export function createMentionSuggestion(qc: QueryClient): Omit<
   SuggestionOptions<MentionItem>,
   "editor"
 > {
+  // Per-editor state lives in this closure so multiple ContentEditor instances
+  // (e.g. comment input + reply box) don't abort each other's searches.
+  let renderer: ReactRenderer<MentionListRef> | null = null;
+  let activeCommand: ((item: MentionItem) => void) | null = null;
+  let searchSeq = 0;
+  let searchAbort: AbortController | null = null;
+  let popup: HTMLDivElement | null = null;
+
+  function buildSyncItems(query: string): MentionItem[] {
+    // Read workspace id imperatively because this runs in TipTap factory scope
+    // (outside React render). getCurrentWsId() is the non-React singleton set
+    // by the URL-driven workspace layout.
+    const wsId = getCurrentWsId();
+    if (!wsId) return [];
+
+    const members: MemberWithUser[] = qc.getQueryData(workspaceKeys.members(wsId)) ?? [];
+    const agents: Agent[] = qc.getQueryData(workspaceKeys.agents(wsId)) ?? [];
+    const cachedIssues: Issue[] =
+      qc.getQueryData<ListIssuesResponse>(issueKeys.list(wsId))?.issues ?? [];
+
+    const q = query.toLowerCase();
+
+    const allItem: MentionItem[] =
+      "all members".includes(q) || "all".includes(q)
+        ? [{ id: "all", label: "All members", type: "all" as const }]
+        : [];
+
+    const memberItems: MentionItem[] = members
+      .filter((m) => m.name.toLowerCase().includes(q))
+      .map((m) => ({
+        id: m.user_id,
+        label: m.name,
+        type: "member" as const,
+      }));
+
+    const agentItems: MentionItem[] = agents
+      .filter((a) => !a.archived_at && a.name.toLowerCase().includes(q))
+      .map((a) => ({ id: a.id, label: a.name, type: "agent" as const }));
+
+    // Cached issues give an instant first paint; the server search below
+    // adds done/cancelled and any other matches not in the local cache.
+    const issueItems: MentionItem[] = cachedIssues
+      .filter(
+        (i) =>
+          i.identifier.toLowerCase().includes(q) ||
+          i.title.toLowerCase().includes(q),
+      )
+      .map(issueToMention);
+
+    return [...allItem, ...memberItems, ...agentItems, ...issueItems];
+  }
+
+  function startServerIssueSearch(query: string, syncItems: MentionItem[]) {
+    // Supersede any in-flight search; the next-arrived response wins.
+    if (searchAbort) searchAbort.abort();
+    const mySeq = ++searchSeq;
+    const wsId = getCurrentWsId();
+    if (!wsId) return;
+
+    void (async () => {
+      // Debounce: skip the fetch if a newer keystroke arrives within 150ms.
+      await new Promise((r) => setTimeout(r, 150));
+      if (mySeq !== searchSeq) return;
+
+      const controller = new AbortController();
+      searchAbort = controller;
+      try {
+        const res = await api.searchIssues({
+          q: query,
+          limit: 10,
+          include_closed: true,
+          signal: controller.signal,
+        });
+        if (mySeq !== searchSeq) return;
+        if (!renderer || !activeCommand) return;
+
+        const existingIssueIds = new Set(
+          syncItems.filter((i) => i.type === "issue").map((i) => i.id),
+        );
+        const extraIssueItems = res.issues
+          .map(issueToMention)
+          .filter((i) => !existingIssueIds.has(i.id));
+        if (extraIssueItems.length === 0) return;
+
+        const merged = [...syncItems, ...extraIssueItems].slice(0, MAX_ITEMS);
+        renderer.updateProps({ items: merged, command: activeCommand });
+      } catch {
+        // Aborted or network error: nothing to do — sync items remain.
+      }
+    })();
+  }
+
   return {
-    items: async ({ query }) => {
-      // Read workspace id imperatively because this runs in TipTap factory scope
-      // (outside React render). getCurrentWsId() is the non-React
-      // singleton set by the URL-driven workspace layout.
-      const wsId = getCurrentWsId();
-      const members: MemberWithUser[] = wsId ? qc.getQueryData(workspaceKeys.members(wsId)) ?? [] : [];
-      const agents: Agent[] = wsId ? qc.getQueryData(workspaceKeys.agents(wsId)) ?? [] : [];
-
-      const q = query.toLowerCase();
-
-      // Show "All members" option when query is empty or matches "all"
-      const allItem: MentionItem[] =
-        "all members".includes(q) || "all".includes(q)
-          ? [{ id: "all", label: "All members", type: "all" as const }]
-          : [];
-
-      const memberItems: MentionItem[] = members
-        .filter((m) => m.name.toLowerCase().includes(q))
-        .map((m) => ({
-          id: m.user_id,
-          label: m.name,
-          type: "member" as const,
-        }));
-
-      const agentItems: MentionItem[] = agents
-        .filter((a) => !a.archived_at && a.name.toLowerCase().includes(q))
-        .map((a) => ({ id: a.id, label: a.name, type: "agent" as const }));
-
-      const issueItems = wsId ? await searchIssueMentions(qc, wsId, q) : [];
-
-      return [...allItem, ...memberItems, ...agentItems, ...issueItems].slice(0, 15);
+    items: ({ query }) => {
+      const syncItems = buildSyncItems(query);
+      // Empty query has no server search — cached issues are enough, and
+      // we still bump the seq to cancel any pending fetch from a prior key.
+      if (query === "") {
+        if (searchAbort) searchAbort.abort();
+        ++searchSeq;
+      } else {
+        startServerIssueSearch(query, syncItems);
+      }
+      return syncItems.slice(0, MAX_ITEMS);
     },
 
     render: () => {
-      let renderer: ReactRenderer<MentionListRef> | null = null;
-      let popup: HTMLDivElement | null = null;
-
       return {
         onStart: (props: SuggestionProps<MentionItem>) => {
           renderer = new ReactRenderer(MentionList, {
             props: { items: props.items, command: props.command },
             editor: props.editor,
           });
+          activeCommand = props.command;
 
           popup = document.createElement("div");
           popup.style.position = "fixed";
@@ -338,6 +366,7 @@ export function createMentionSuggestion(qc: QueryClient): Omit<
             items: props.items,
             command: props.command,
           });
+          activeCommand = props.command;
           if (popup) updatePosition(popup, props.clientRect);
         },
 
@@ -375,8 +404,13 @@ export function createMentionSuggestion(qc: QueryClient): Omit<
       function cleanup() {
         renderer?.destroy();
         renderer = null;
+        activeCommand = null;
         popup?.remove();
         popup = null;
+        // Cancel any in-flight server search; its result would target a
+        // destroyed renderer.
+        if (searchAbort) searchAbort.abort();
+        ++searchSeq;
       }
     },
   };
