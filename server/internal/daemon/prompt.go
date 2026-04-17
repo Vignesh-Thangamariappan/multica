@@ -45,10 +45,15 @@ func buildCommentPrompt(task Task) string {
 	b.WriteString("You are running as a local coding agent for a Multica workspace.\n\n")
 	fmt.Fprintf(&b, "Your assigned issue ID is: %s\n\n", task.IssueID)
 	if task.TriggerCommentContent != "" {
-		b.WriteString("[NEW COMMENT] A user just left a new comment that triggered this task. You MUST respond to THIS comment, not any previous ones:\n\n")
+		b.WriteString("[NEW COMMENT] A user just left a new comment that triggered this task. You MUST respond to THIS comment:\n\n")
 		fmt.Fprintf(&b, "> %s\n\n", task.TriggerCommentContent)
 	}
-	fmt.Fprintf(&b, "Start by running `multica issue get %s --output json` to understand your task, then complete it.\n", task.IssueID)
+	b.WriteString("**IMPORTANT — review before acting:**\n")
+	fmt.Fprintf(&b, "1. Run `rtk multica issue get %s --output json` to check the current issue status and description\n", task.IssueID)
+	fmt.Fprintf(&b, "2. Run `rtk multica issue comment list %s --output json` to read the full conversation and understand what was already done\n", task.IssueID)
+	b.WriteString("3. If the work requested was already completed in a previous session, do NOT redo it — just acknowledge it and reply to the comment with a summary of what was done\n")
+	b.WriteString("4. Only do new or additional work if the comment explicitly asks for something that hasn't been done yet\n")
+	fmt.Fprintf(&b, "5. Always reply to the triggering comment (ID: `%s`) with your response\n", task.TriggerCommentID)
 	return b.String()
 }
 

@@ -129,14 +129,17 @@ func buildMetaSkillContent(provider string, ctx TaskContextForEnv) string {
 		b.WriteString("- If the task requires code changes, use `rtk multica repo checkout <url>` to get the code first\n")
 		b.WriteString("- Keep responses concise and direct\n\n")
 	} else if ctx.TriggerCommentID != "" {
-		// Comment-triggered: focus on reading and replying
-		b.WriteString("**This task was triggered by a NEW comment.** Your primary job is to respond to THIS specific comment, even if you have handled similar requests before in this session.\n\n")
-		fmt.Fprintf(&b, "1. Run `rtk multica issue get %s --output json` to understand the issue context\n", ctx.IssueID)
-		fmt.Fprintf(&b, "2. Run `rtk multica issue comment list %s --output json` to read the conversation\n", ctx.IssueID)
+		// Comment-triggered: review progress first, then respond.
+		b.WriteString("**This task was triggered by a NEW comment.** Before doing any work, review what has already been done.\n\n")
+		fmt.Fprintf(&b, "1. Run `rtk multica issue get %s --output json` — check the current status and description\n", ctx.IssueID)
+		fmt.Fprintf(&b, "2. Run `rtk multica issue comment list %s --output json` — read the full conversation to understand prior progress\n", ctx.IssueID)
 		b.WriteString("   - If the output is very large or truncated, use pagination: `--limit 30` to get the latest 30 comments, or `--since <timestamp>` to fetch only recent ones\n")
-		fmt.Fprintf(&b, "3. Find the triggering comment (ID: `%s`) and understand what is being asked — do NOT confuse it with previous comments\n", ctx.TriggerCommentID)
-		fmt.Fprintf(&b, "4. Reply: `rtk multica issue comment add %s --parent %s --content \"...\"`\n", ctx.IssueID, ctx.TriggerCommentID)
-		b.WriteString("5. If the comment requests code changes or further work, do the work first, then reply with your results\n")
+		fmt.Fprintf(&b, "3. Find the triggering comment (ID: `%s`) and understand exactly what is being asked\n", ctx.TriggerCommentID)
+		b.WriteString("4. **Decide based on prior progress:**\n")
+		b.WriteString("   - If the requested work was already completed in a previous session → do NOT redo it. Reply with a summary of what was done.\n")
+		b.WriteString("   - If the comment asks for something new or additional → do only that new work, then reply with your results.\n")
+		b.WriteString("   - If the comment is a question or request for information → answer it directly without touching the code.\n")
+		fmt.Fprintf(&b, "5. Always reply: `rtk multica issue comment add %s --parent %s --content \"...\"`\n", ctx.IssueID, ctx.TriggerCommentID)
 		b.WriteString("6. Do NOT change the issue status unless the comment explicitly asks for it\n\n")
 	} else {
 		// Assignment-triggered: defer to agent Skills for workflow specifics.
