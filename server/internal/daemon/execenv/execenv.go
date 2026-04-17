@@ -83,7 +83,8 @@ type TaskContextForEnv struct {
 	// in the DB). Rendered into the brief as `## Workspace Context` when
 	// non-empty so every agent in the workspace sees the same shared context,
 	// regardless of issue / chat / autopilot / quick-create.
-	WorkspaceContext string
+	WorkspaceContext  string
+	WorkspaceKnowledge []string // active knowledge entries to inject into system prompt
 	// RequestingUserName + RequestingUserProfileDescription describe the
 	// human the agent is acting on behalf of. v1 sources them from the
 	// runtime owner (the user who registered the daemon). Rendered into the
@@ -92,6 +93,14 @@ type TaskContextForEnv struct {
 	// context and the agent stays anonymous-user mode.
 	RequestingUserName               string
 	RequestingUserProfileDescription string
+}
+
+// AttachmentContextForEnv is the minimal attachment metadata needed for
+// capability derivation. The agent fetches full metadata through the CLI.
+type AttachmentContextForEnv struct {
+	ID          string
+	Filename    string
+	ContentType string
 }
 
 // SkillContextForEnv represents a skill to be written into the execution environment.
