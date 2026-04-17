@@ -21,6 +21,7 @@ type S3Storage struct {
 	region      string // used to construct virtual-hosted-style public URLs when no CDN/endpoint is set
 	cdnDomain   string // if set, returned URLs use this instead of bucket name
 	endpointURL string // if set, use path-style URLs (e.g. MinIO)
+	publicURL   string // if set, used for returned URLs instead of endpointURL (e.g. localhost vs internal Docker hostname)
 }
 
 // NewS3StorageFromEnv creates an S3Storage from environment variables.
@@ -69,6 +70,7 @@ func NewS3StorageFromEnv() *S3Storage {
 	cdnDomain := os.Getenv("CLOUDFRONT_DOMAIN")
 
 	endpointURL := os.Getenv("AWS_ENDPOINT_URL")
+	publicURL := os.Getenv("S3_PUBLIC_URL")
 	s3Opts := []func(*s3.Options){}
 	if endpointURL != "" {
 		s3Opts = append(s3Opts, func(o *s3.Options) {
@@ -77,13 +79,14 @@ func NewS3StorageFromEnv() *S3Storage {
 		})
 	}
 
-	slog.Info("S3 storage initialized", "bucket", bucket, "region", region, "cdn_domain", cdnDomain, "endpoint_url", endpointURL)
+	slog.Info("S3 storage initialized", "bucket", bucket, "region", region, "cdn_domain", cdnDomain, "endpoint_url", endpointURL, "public_url", publicURL)
 	return &S3Storage{
 		client:      s3.NewFromConfig(cfg, s3Opts...),
 		bucket:      bucket,
 		region:      region,
 		cdnDomain:   cdnDomain,
 		endpointURL: endpointURL,
+		publicURL:   publicURL,
 	}
 }
 
@@ -195,11 +198,11 @@ func (s *S3Storage) Upload(ctx context.Context, key string, data []byte, content
 }
 
 // uploadedURL returns the URL stored for client consumption after an upload.
-// Priority: CDN domain > custom endpoint > AWS S3 region-qualified host. The CDN
-// domain wins even when a custom endpoint is set so S3-compatible backends
+// Priority: CDN domain > publicURL > custom endpoint > AWS S3 region-qualified host.
+// CDN domain wins even when a custom endpoint is set so S3-compatible backends
 // (MinIO, R2, B2, Wasabi, etc.) can be paired with a separate public-read
-// domain — writes still go through the SDK with the custom endpoint; only the
-// reader-facing URL changes.
+// domain. publicURL maps an internal endpoint (e.g. http://minio:9000) to a
+// public-facing read URL without changing the write path.
 //
 // For the default AWS S3 case, virtual-hosted-style is preferred:
 // https://<bucket>.s3.<region>.amazonaws.com/<key>. When the bucket name
@@ -209,6 +212,9 @@ func (s *S3Storage) Upload(ctx context.Context, key string, data []byte, content
 func (s *S3Storage) uploadedURL(key string) string {
 	if s.cdnDomain != "" {
 		return fmt.Sprintf("https://%s/%s", s.cdnDomain, key)
+	}
+	if s.publicURL != "" {
+		return fmt.Sprintf("%s/%s/%s", strings.TrimRight(s.publicURL, "/"), s.bucket, key)
 	}
 	if s.endpointURL != "" {
 		return fmt.Sprintf("%s/%s/%s", strings.TrimRight(s.endpointURL, "/"), s.bucket, key)
