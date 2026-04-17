@@ -158,6 +158,12 @@ func buildMetaSkillContent(provider string, ctx TaskContextForEnv) string {
 		b.WriteString("Do not compress a multi-paragraph answer into one line and do not rely on `\\n` escapes.\n\n")
 	}
 
+	b.WriteString("### Knowledge\n")
+	b.WriteString("Share learnings with future agent runs in this workspace:\n")
+	b.WriteString("- `multica knowledge propose \"<learning>\"` — Propose a knowledge entry for human review (becomes active after approval)\n")
+	b.WriteString("- `multica knowledge list` — List active knowledge entries\n")
+	b.WriteString("- `multica knowledge list --status pending` — List pending proposals\n\n")
+
 	// Inject available repositories section.
 	if len(ctx.Repos) > 0 {
 		b.WriteString("## Repositories\n\n")
@@ -196,10 +202,10 @@ func buildMetaSkillContent(provider string, ctx TaskContextForEnv) string {
 		b.WriteString("**You are in chat mode.** A user is messaging you directly in a chat window.\n\n")
 		b.WriteString("- Respond conversationally and helpfully to the user's message\n")
 		b.WriteString("- You have full access to the `multica` CLI to look up issues, workspace info, members, agents, etc.\n")
-		b.WriteString("- If asked about issues, use `multica issue list --output json` or `multica issue get <id> --output json`\n")
-		b.WriteString("- If asked about the workspace, use `multica workspace get --output json`\n")
+		b.WriteString("- If asked about issues, use `rtk multica issue list --output json` or `rtk multica issue get <id> --output json`\n")
+		b.WriteString("- If asked about the workspace, use `rtk multica workspace get --output json`\n")
 		b.WriteString("- If asked to perform actions (create issues, update status, etc.), use the appropriate CLI commands\n")
-		b.WriteString("- If the task requires code changes, use `multica repo checkout <url>` to get the code first. Use `--ref <branch-or-sha>` when you need an exact revision\n")
+		b.WriteString("- If the task requires code changes, use `rtk multica repo checkout <url>` to get the code first. Use `--ref <branch-or-sha>` when you need an exact revision\n")
 		b.WriteString("- Keep responses concise and direct\n\n")
 	} else if ctx.QuickCreatePrompt != "" {
 		// Quick-create task: detailed field / output rules live in the
@@ -245,8 +251,8 @@ func buildMetaSkillContent(provider string, ctx TaskContextForEnv) string {
 	} else if ctx.TriggerCommentID != "" {
 		// Comment-triggered: focus on reading and replying
 		b.WriteString("**This task was triggered by a NEW comment.** Your primary job is to respond to THIS specific comment, even if you have handled similar requests before in this session.\n\n")
-		fmt.Fprintf(&b, "1. Run `multica issue get %s --output json` to understand the issue context\n", ctx.IssueID)
-		fmt.Fprintf(&b, "2. Run `multica issue comment list %s --output json` to read the conversation\n", ctx.IssueID)
+		fmt.Fprintf(&b, "1. Run `rtk multica issue get %s --output json` to understand the issue context\n", ctx.IssueID)
+		fmt.Fprintf(&b, "2. Run `rtk multica issue comment list %s --output json` to read the conversation\n", ctx.IssueID)
 		b.WriteString("   - If the output is very large or truncated, use pagination: `--limit 30` to get the latest 30 comments, or `--since <timestamp>` to fetch only recent ones\n")
 		fmt.Fprintf(&b, "3. Find the triggering comment (ID: `%s`) and understand what is being asked — do NOT confuse it with previous comments\n", ctx.TriggerCommentID)
 		b.WriteString("4. **Decide whether a reply is warranted.** If you produced actual work this turn (investigated, fixed, answered a real question), post the result via step 6 — that is a normal reply, not a noise comment. If the triggering comment was a pure acknowledgment / thanks / sign-off from another agent AND you produced no work this turn, do NOT post a reply — and do NOT post a comment saying 'No reply needed' or similar. Simply exit with no output. Silence is a valid and preferred way to end agent-to-agent conversations.\n")
@@ -257,14 +263,14 @@ func buildMetaSkillContent(provider string, ctx TaskContextForEnv) string {
 	} else {
 		// Assignment-triggered: defer to agent Skills for workflow specifics.
 		b.WriteString("You are responsible for managing the issue status throughout your work.\n\n")
-		fmt.Fprintf(&b, "1. Run `multica issue get %s --output json` to understand your task\n", ctx.IssueID)
-		fmt.Fprintf(&b, "2. Run `multica issue comment list %s --output json` to read the full comment history — this is mandatory, not optional. Earlier comments often carry context the issue body lacks (e.g. which repo to work in, the prior agent's findings, the reason the issue was reassigned to you). Skipping this step is the most common cause of agents acting on stale or incomplete instructions.\n", ctx.IssueID)
+		fmt.Fprintf(&b, "1. Run `rtk multica issue get %s --output json` to understand your task\n", ctx.IssueID)
+		fmt.Fprintf(&b, "2. Run `rtk multica issue comment list %s --output json` to read the full comment history — this is mandatory, not optional. Earlier comments often carry context the issue body lacks (e.g. which repo to work in, the prior agent's findings, the reason the issue was reassigned to you). Skipping this step is the most common cause of agents acting on stale or incomplete instructions.\n", ctx.IssueID)
 		fmt.Fprintf(&b, "   - If the output is very large or truncated, use pagination: `--limit 30` to get the latest 30 comments, or `--since <timestamp>` to fetch only recent ones\n")
-		fmt.Fprintf(&b, "3. Run `multica issue status %s in_progress`\n", ctx.IssueID)
+		fmt.Fprintf(&b, "3. Run `rtk multica issue status %s in_progress`\n", ctx.IssueID)
 		b.WriteString("4. Follow your Skills and Agent Identity to complete the task (write code, investigate, etc.)\n")
-		fmt.Fprintf(&b, "5. **Post your final results as a comment — this step is mandatory**: `multica issue comment add %s --content \"...\"`. Your results are only visible to the user if posted via this CLI call; text in your terminal or run logs is NOT delivered.\n", ctx.IssueID)
-		fmt.Fprintf(&b, "6. When done, run `multica issue status %s in_review`\n", ctx.IssueID)
-		fmt.Fprintf(&b, "7. If blocked, run `multica issue status %s blocked` and post a comment explaining why\n\n", ctx.IssueID)
+		fmt.Fprintf(&b, "5. **Post your final results as a comment — this step is mandatory**: `rtk multica issue comment add %s --content \"...\"`. Your results are only visible to the user if posted via this CLI call; text in your terminal or run logs is NOT delivered.\n", ctx.IssueID)
+		fmt.Fprintf(&b, "6. When done, run `rtk multica issue status %s in_review`\n", ctx.IssueID)
+		fmt.Fprintf(&b, "7. If blocked, run `rtk multica issue status %s blocked` and post a comment explaining why\n\n", ctx.IssueID)
 	}
 
 	if len(ctx.AgentSkills) > 0 {
@@ -318,6 +324,38 @@ func buildMetaSkillContent(provider string, ctx TaskContextForEnv) string {
 	b.WriteString("Multica resource URLs require authenticated access that only the `multica` CLI can provide.\n\n")
 	b.WriteString("If you need to perform an operation that is not covered by any existing `multica` command, ")
 	b.WriteString("do NOT attempt to work around it. Instead, post a comment mentioning the workspace owner to request the missing functionality.\n\n")
+
+	b.WriteString("## Token Efficiency — RTK\n\n")
+	b.WriteString("**Golden rule: always prefix commands with `rtk`.** RTK filters verbose output to only what matters, saving 50–99% of tokens. If RTK has no filter for a command it passes it through unchanged, so `rtk` is always safe to use.\n\n")
+	b.WriteString("**Even in `&&` chains, use `rtk` on every command:**\n\n")
+	b.WriteString("```bash\n# ✅ Correct\nrtk multica issue get <id> --output json && rtk multica issue status <id> in_progress\n# ❌ Wrong\nmultica issue get <id> --output json && multica issue status <id> in_progress\n```\n\n")
+	b.WriteString("| Use | Instead of | Savings |\n")
+	b.WriteString("| --- | --- | --- |\n")
+	b.WriteString("| `rtk multica ...` | `multica ...` | 60-80% |\n")
+	b.WriteString("| `rtk git diff ...` | `git diff ...` | 80% |\n")
+	b.WriteString("| `rtk git log ...` | `git log ...` | 70% |\n")
+	b.WriteString("| `rtk git status` | `git status` | 60% |\n")
+	b.WriteString("| `rtk gh pr view ...` | `gh pr view ...` | 87% |\n")
+	b.WriteString("| `rtk gh run list` | `gh run list` | 82% |\n")
+	b.WriteString("| `rtk pnpm ...` | `pnpm ...` | 70-90% |\n")
+	b.WriteString("| `rtk vitest ...` | `vitest ...` | 99% |\n")
+	b.WriteString("| `rtk go test ...` | `go test ...` | 90% |\n")
+	b.WriteString("| `rtk tsc ...` | `tsc ...` | 83% |\n")
+	b.WriteString("| `rtk find ...` | `find ...` | 70% |\n")
+	b.WriteString("| `rtk grep ...` | `grep ...` | 75% |\n")
+	b.WriteString("| `rtk ls ...` | `ls ...` | 65% |\n")
+	b.WriteString("| `rtk curl -s ...` | `curl -s ...` | 70% |\n")
+	b.WriteString("| `rtk cat <file>` | `cat <file>` | 60% |\n\n")
+
+	if len(ctx.WorkspaceKnowledge) > 0 {
+		b.WriteString("## Workspace Knowledge\n\n")
+		b.WriteString("Learnings accumulated from previous agent runs in this workspace. Apply these when relevant:\n\n")
+		for _, entry := range ctx.WorkspaceKnowledge {
+			fmt.Fprintf(&b, "- %s\n", entry)
+		}
+		b.WriteString("\nTo add new learnings for future agents, run:\n")
+		b.WriteString("```\nrtk multica knowledge propose \"<your learning here>\"\n```\n\n")
+	}
 
 	b.WriteString("## Output\n\n")
 	switch {
