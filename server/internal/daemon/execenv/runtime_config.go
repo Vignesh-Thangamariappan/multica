@@ -249,13 +249,17 @@ func buildMetaSkillContent(provider string, ctx TaskContextForEnv) string {
 		b.WriteString("- Complete the autopilot instructions directly\n")
 		b.WriteString("- Do not run `multica issue get`, `multica issue comment add`, or `multica issue status` for this run unless the autopilot instructions explicitly tell you to create or update an issue\n\n")
 	} else if ctx.TriggerCommentID != "" {
-		// Comment-triggered: focus on reading and replying
-		b.WriteString("**This task was triggered by a NEW comment.** Your primary job is to respond to THIS specific comment, even if you have handled similar requests before in this session.\n\n")
-		fmt.Fprintf(&b, "1. Run `rtk multica issue get %s --output json` to understand the issue context\n", ctx.IssueID)
-		fmt.Fprintf(&b, "2. Run `rtk multica issue comment list %s --output json` to read the conversation\n", ctx.IssueID)
+		// Comment-triggered: review progress first, then respond.
+		b.WriteString("**This task was triggered by a NEW comment.** Before doing any work, review what has already been done.\n\n")
+		fmt.Fprintf(&b, "1. Run `rtk multica issue get %s --output json` — check the current status and description\n", ctx.IssueID)
+		fmt.Fprintf(&b, "2. Run `rtk multica issue comment list %s --output json` — read the full conversation to understand prior progress\n", ctx.IssueID)
 		b.WriteString("   - If the output is very large or truncated, use pagination: `--limit 30` to get the latest 30 comments, or `--since <timestamp>` to fetch only recent ones\n")
 		fmt.Fprintf(&b, "3. Find the triggering comment (ID: `%s`) and understand what is being asked — do NOT confuse it with previous comments\n", ctx.TriggerCommentID)
-		b.WriteString("4. **Decide whether a reply is warranted.** If you produced actual work this turn (investigated, fixed, answered a real question), post the result via step 6 — that is a normal reply, not a noise comment. If the triggering comment was a pure acknowledgment / thanks / sign-off from another agent AND you produced no work this turn, do NOT post a reply — and do NOT post a comment saying 'No reply needed' or similar. Simply exit with no output. Silence is a valid and preferred way to end agent-to-agent conversations.\n")
+		b.WriteString("4. **Decide whether to act.** Check prior progress and the triggering comment:\n")
+		b.WriteString("   - If the triggering comment is an acknowledgment / thanks / sign-off from another agent and no concrete question or task is being asked of you, do NOT post a reply — just exit. Silence is a valid and preferred way to end agent-to-agent conversations.\n")
+		b.WriteString("   - If the requested work was already completed in a previous session → do NOT redo it. Reply with a summary of what was done.\n")
+		b.WriteString("   - If the comment asks for something new or additional → do only that new work, then reply with your results.\n")
+		b.WriteString("   - If the comment is a question or request for information → answer it directly without touching the code.\n")
 		b.WriteString("5. If a reply IS warranted: do any requested work first, then **decide whether to include any `@mention` link.** The default is NO mention. Only mention when you are escalating to a human owner who is not yet involved, delegating a concrete new sub-task to another agent for the first time, or the user explicitly asked you to loop someone in. Never @mention the agent you are replying to as a thank-you or sign-off.\n")
 		b.WriteString("6. **If you reply, post it as a comment — this step is mandatory when you reply.** Text in your terminal or run logs is NOT delivered to the user. ")
 		b.WriteString(BuildCommentReplyInstructions(ctx.IssueID, ctx.TriggerCommentID))
