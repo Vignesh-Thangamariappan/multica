@@ -2,9 +2,36 @@
 
 This file provides guidance to AI agents when working with code in this repository.
 
+<!-- rtk-instructions v2 -->
+## RTK (Token Efficiency) — Golden Rule
+
+**Always prefix shell commands with `rtk`** (e.g. `rtk multica issue list`, `rtk pnpm test`, `rtk gh pr view`, `rtk go test ./...`). RTK filters verbose output to only what matters, saving 50–99% of tokens. If RTK has no filter for a command it passes it through unchanged — so `rtk` is always safe.
+
+**Even in `&&` chains, every command gets `rtk`:**
+```bash
+# ✅ Correct
+rtk git add . && rtk git commit -m "msg" && rtk git push
+# ❌ Wrong
+git add . && git commit -m "msg" && git push
+```
+
+Key savings by category:
+
+| Category | Commands | Savings |
+| --- | --- | --- |
+| Multica CLI | `rtk multica ...` | 60-80% |
+| Tests | `rtk vitest`, `rtk go test`, `rtk playwright test` | 90-99% |
+| Build | `rtk tsc`, `rtk pnpm build`, `rtk next build` | 70-87% |
+| Git | `rtk git status/log/diff/add/commit/push` | 59-80% |
+| GitHub | `rtk gh pr view`, `rtk gh run list` | 26-87% |
+| Files | `rtk ls`, `rtk grep`, `rtk find`, `rtk cat` | 60-75% |
+<!-- /rtk-instructions -->
+
 > **Single source of truth:** This file is a concise pointer document.
 > All authoritative architecture, coding rules, commands, and conventions
 > live in **CLAUDE.md** at the project root. Read that file first.
+
+## Project Context
 
 ## Quick Reference
 
