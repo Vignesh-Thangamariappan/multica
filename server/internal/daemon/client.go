@@ -402,3 +402,38 @@ func (c *Client) getJSON(ctx context.Context, path string, respBody any) error {
 	}
 	return json.NewDecoder(resp.Body).Decode(respBody)
 }
+
+// ListActiveKnowledge returns active workspace knowledge entries for injection into agent prompts.
+func (c *Client) ListActiveKnowledge(ctx context.Context, workspaceID string) ([]string, error) {
+	var entries []struct {
+		Content string `json:"content"`
+	}
+	path := "/api/knowledge?status=active"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
+	if err != nil {
+		return nil, err
+	}
+	if c.token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.token)
+	}
+	req.Header.Set("X-Workspace-ID", workspaceID)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return nil, nil // non-fatal: skip knowledge on error
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&entries); err != nil {
+		return nil, nil
+	}
+
+	contents := make([]string, len(entries))
+	for i, e := range entries {
+		contents[i] = e.Content
+	}
+	return contents, nil
+}

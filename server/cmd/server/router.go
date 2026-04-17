@@ -505,6 +505,20 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 				r.Get("/", h.GetNotificationPreferences)
 				r.Put("/", h.UpdateNotificationPreferences)
 			})
+
+			// Workspace Knowledge
+			r.Route("/api/knowledge", func(r chi.Router) {
+				// All members can read and propose.
+				r.Get("/", h.ListWorkspaceKnowledge)
+				r.Post("/propose", h.ProposeWorkspaceKnowledge)
+				// Admins and owners can create (active), approve, reject, delete.
+				r.With(middleware.RequireWorkspaceRole(queries, "owner", "admin")).Post("/", h.CreateWorkspaceKnowledge)
+				r.Route("/{kid}", func(r chi.Router) {
+					r.With(middleware.RequireWorkspaceRole(queries, "owner", "admin")).Patch("/approve", h.ApproveWorkspaceKnowledge)
+					r.With(middleware.RequireWorkspaceRole(queries, "owner", "admin")).Patch("/reject", h.RejectWorkspaceKnowledge)
+					r.With(middleware.RequireWorkspaceRole(queries, "owner", "admin")).Delete("/", h.DeleteWorkspaceKnowledge)
+				})
+			})
 		})
 	})
 

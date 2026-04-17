@@ -1585,6 +1585,15 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, slot i
 		}
 	}
 
+	// Load active workspace knowledge and inject into the agent's context.
+	if knowledge, err := d.client.ListActiveKnowledge(ctx, task.WorkspaceID); err == nil && len(knowledge) > 0 {
+		// Cap to 20 most recent entries to keep context size manageable.
+		if len(knowledge) > 20 {
+			knowledge = knowledge[:20]
+		}
+		taskCtx.WorkspaceKnowledge = knowledge
+	}
+
 	// Try to reuse the workdir from a previous task on the same (agent, issue) pair.
 	var env *execenv.Environment
 	codexVersion := d.agentVersion("codex")
@@ -1869,11 +1878,19 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, slot i
 		if errMsg == "" {
 			errMsg = fmt.Sprintf("%s execution %s", provider, result.Status)
 		}
-		// Forward SessionID/WorkDir on the blocked path: backends commonly
-		// emit a real session_id before failing (rate-limit, tool error,
-		// model reject, …). Without this the chat_session resume pointer
-		// would either be left stale or overwritten with NULL on the
-		// server, causing the next chat turn to lose context.
+
+		// Attempt one self-correction retry before reporting failure.
+		if task.RetryCount == 0 {
+			taskLog.Info("task failed, attempting self-correction retry", "error", errMsg)
+			retryTask := task
+			retryTask.RetryCount = 1
+			retryTask.PriorSessionID = result.SessionID
+			retryTask.RetryError = errMsg
+			return d.runTask(ctx, retryTask, provider, taskLog)
+		}
+
+		// Forward SessionID/WorkDir so the chat_session resume pointer is
+		// preserved even when the agent fails after building a real session.
 		return TaskResult{
 			Status:    "blocked",
 			Comment:   errMsg,

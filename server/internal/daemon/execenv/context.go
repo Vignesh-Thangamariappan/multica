@@ -55,6 +55,14 @@ func writeContextFiles(workDir, provider string, ctx TaskContextForEnv) error {
 		return fmt.Errorf("write project resources: %w", err)
 	}
 
+	// Inject workspace-level Claude Code settings (e.g. RTK hook) so they
+	// apply even when the agent runs with --permission-mode bypassPermissions.
+	if provider == "claude" {
+		if err := writeClaudeSettings(workDir); err != nil {
+			return fmt.Errorf("write claude settings: %w", err)
+		}
+	}
+
 	return nil
 }
 
@@ -203,6 +211,46 @@ func writeSkillFiles(skillsDir string, skills []SkillContextForEnv) error {
 	return nil
 }
 
+// writeClaudeSettings writes .claude/settings.json into the workspace workdir.
+// It injects the RTK PreToolUse hook so token savings apply even when Claude
+// runs with --permission-mode bypassPermissions (where user-level hooks are skipped).
+// If the RTK hook script is not installed on this machine the function is a no-op.
+func writeClaudeSettings(workDir string) error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil // non-fatal
+	}
+	hookPath := filepath.Join(home, ".claude", "hooks", "rtk-managed.sh")
+	if _, err := os.Stat(hookPath); err != nil {
+		return nil // RTK not installed — skip
+	}
+
+	claudeDir := filepath.Join(workDir, ".claude")
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
+		return fmt.Errorf("create .claude dir: %w", err)
+	}
+
+	// Use %q so the path is correctly JSON-escaped.
+	content := fmt.Sprintf(`{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": %q
+          }
+        ]
+      }
+    ]
+  }
+}
+`, hookPath)
+
+	return os.WriteFile(filepath.Join(claudeDir, "settings.json"), []byte(content), 0o644)
+}
+
 // renderIssueContext builds the markdown content for issue_context.md.
 func renderIssueContext(provider string, ctx TaskContextForEnv) string {
 	if ctx.AutopilotRunID != "" {
@@ -225,7 +273,7 @@ func renderIssueContext(provider string, ctx TaskContextForEnv) string {
 	}
 
 	b.WriteString("## Quick Start\n\n")
-	fmt.Fprintf(&b, "Run `multica issue get %s --output json` to fetch the full issue details.\n\n", ctx.IssueID)
+	fmt.Fprintf(&b, "Run `rtk multica issue get %s --output json` to fetch the full issue details.\n\n", ctx.IssueID)
 
 	if len(ctx.AgentSkills) > 0 {
 		b.WriteString("## Agent Skills\n\n")

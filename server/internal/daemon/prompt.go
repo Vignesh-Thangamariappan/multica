@@ -14,6 +14,9 @@ func BuildPrompt(task Task) string {
 	if task.ChatSessionID != "" {
 		return buildChatPrompt(task)
 	}
+	if task.RetryCount > 0 {
+		return buildRetryPrompt(task)
+	}
 	if task.TriggerCommentID != "" {
 		return buildCommentPrompt(task)
 	}
@@ -26,7 +29,7 @@ func BuildPrompt(task Task) string {
 	var b strings.Builder
 	b.WriteString("You are running as a local coding agent for a Multica workspace.\n\n")
 	fmt.Fprintf(&b, "Your assigned issue ID is: %s\n\n", task.IssueID)
-	fmt.Fprintf(&b, "Start by running `multica issue get %s --output json` to understand your task, then complete it.\n", task.IssueID)
+	fmt.Fprintf(&b, "Start by running `rtk multica issue get %s --output json` to understand your task, then complete it.\n", task.IssueID)
 	fmt.Fprintf(&b, "If you need comment history, `multica issue comment list %s` returns the latest 50 by default — pass --limit or --since to scope older windows. Long issues can have thousands of comments; do not fetch everything blindly.\n", task.IssueID)
 	return b.String()
 }
