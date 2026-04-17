@@ -459,6 +459,17 @@ type TaskUsageRollupState struct {
 	LastError         pgtype.Text        `json:"last_error"`
 }
 
+type WorkspaceKnowledge struct {
+	ID           pgtype.UUID        `json:"id"`
+	WorkspaceID  pgtype.UUID        `json:"workspace_id"`
+	AgentID      pgtype.UUID        `json:"agent_id"`
+	Content      string             `json:"content"`
+	SourceTaskID pgtype.UUID        `json:"source_task_id"`
+	// status: "active" | "pending" | "rejected"
+	Status    string             `json:"status"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
 type User struct {
 	ID                      pgtype.UUID        `json:"id"`
 	Name                    string             `json:"name"`

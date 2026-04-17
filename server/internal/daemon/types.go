@@ -58,6 +58,8 @@ type Task struct {
 	AutopilotSource         string          `json:"autopilot_source,omitempty"`          // manual, schedule, webhook, or api
 	AutopilotTriggerPayload json.RawMessage `json:"autopilot_trigger_payload,omitempty"` // optional trigger payload for webhook/api runs
 	QuickCreatePrompt       string          `json:"quick_create_prompt,omitempty"`       // user's natural-language input for quick-create tasks
+	RetryCount              int             `json:"-"`                                   // in-process retry counter (not persisted)
+	RetryError              string          `json:"-"`                                   // error from the previous failed attempt
 }
 
 // AgentData holds agent details returned by the claim endpoint.
