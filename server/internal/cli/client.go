@@ -239,14 +239,20 @@ func (c *APIClient) PutJSON(ctx context.Context, path string, body any, out any)
 	return json.NewDecoder(resp.Body).Decode(out)
 }
 
-// PatchJSON performs a PATCH request with a JSON body.
+// PatchJSON performs a PATCH request with an optional JSON body.
 func (c *APIClient) PatchJSON(ctx context.Context, path string, body any, out any) error {
-	data, err := json.Marshal(body)
-	if err != nil {
-		return err
+	var bodyReader *bytes.Reader
+	if body != nil {
+		data, err := json.Marshal(body)
+		if err != nil {
+			return err
+		}
+		bodyReader = bytes.NewReader(data)
+	} else {
+		bodyReader = bytes.NewReader([]byte{})
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, c.BaseURL+path, bytes.NewReader(data))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, c.BaseURL+path, bodyReader)
 	if err != nil {
 		return err
 	}
