@@ -64,6 +64,8 @@ type Task struct {
 	QuickCreatePrompt            string                `json:"quick_create_prompt,omitempty"`              // user's natural-language input for quick-create tasks
 	SquadID                      string                `json:"squad_id,omitempty"`                         // when the picker was a squad, the squad's UUID; Agent is still the resolved leader
 	SquadName                    string                `json:"squad_name,omitempty"`                       // display name for the picker squad, used in prompt text
+	RetryCount                   int                   `json:"-"`                                          // in-process retry counter (not persisted)
+	RetryError                   string                `json:"-"`                                          // error from the previous failed attempt
 }
 
 // ChatAttachmentMeta is the structured attachment metadata the daemon
