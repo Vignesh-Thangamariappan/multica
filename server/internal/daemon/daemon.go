@@ -914,6 +914,15 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, taskLo
 		ChatSessionID:     task.ChatSessionID,
 	}
 
+	// Load active workspace knowledge and inject into the agent's context.
+	if knowledge, err := d.client.ListActiveKnowledge(ctx, task.WorkspaceID); err == nil && len(knowledge) > 0 {
+		// Cap to 20 most recent entries to keep context size manageable.
+		if len(knowledge) > 20 {
+			knowledge = knowledge[:20]
+		}
+		taskCtx.WorkspaceKnowledge = knowledge
+	}
+
 	// Try to reuse the workdir from a previous task on the same (agent, issue) pair.
 	var env *execenv.Environment
 	codexVersion := d.agentVersion("codex")
@@ -1086,6 +1095,17 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, taskLo
 		if errMsg == "" {
 			errMsg = fmt.Sprintf("%s execution %s", provider, result.Status)
 		}
+
+		// Attempt one self-correction retry before reporting failure.
+		if task.RetryCount == 0 {
+			taskLog.Info("task failed, attempting self-correction retry", "error", errMsg)
+			retryTask := task
+			retryTask.RetryCount = 1
+			retryTask.PriorSessionID = result.SessionID
+			retryTask.RetryError = errMsg
+			return d.runTask(ctx, retryTask, provider, taskLog)
+		}
+
 		return TaskResult{Status: "blocked", Comment: errMsg, EnvRoot: env.RootDir, Usage: usageEntries}, nil
 	}
 }

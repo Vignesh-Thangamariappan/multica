@@ -12,13 +12,28 @@ func BuildPrompt(task Task) string {
 	if task.ChatSessionID != "" {
 		return buildChatPrompt(task)
 	}
+	if task.RetryCount > 0 {
+		return buildRetryPrompt(task)
+	}
 	if task.TriggerCommentID != "" {
 		return buildCommentPrompt(task)
 	}
 	var b strings.Builder
 	b.WriteString("You are running as a local coding agent for a Multica workspace.\n\n")
 	fmt.Fprintf(&b, "Your assigned issue ID is: %s\n\n", task.IssueID)
-	fmt.Fprintf(&b, "Start by running `multica issue get %s --output json` to understand your task, then complete it.\n", task.IssueID)
+	fmt.Fprintf(&b, "Start by running `rtk multica issue get %s --output json` to understand your task, then complete it.\n", task.IssueID)
+	return b.String()
+}
+
+// buildRetryPrompt constructs a self-correction prompt when a previous attempt failed.
+func buildRetryPrompt(task Task) string {
+	var b strings.Builder
+	b.WriteString("You are running as a local coding agent for a Multica workspace.\n\n")
+	fmt.Fprintf(&b, "Your assigned issue ID is: %s\n\n", task.IssueID)
+	b.WriteString("Your previous attempt on this task failed. Here is the error:\n\n")
+	fmt.Fprintf(&b, "```\n%s\n```\n\n", task.RetryError)
+	b.WriteString("Reflect on what went wrong, correct your approach, and try again.\n")
+	fmt.Fprintf(&b, "Run `rtk multica issue get %s --output json` to review the task, then complete it successfully.\n", task.IssueID)
 	return b.String()
 }
 

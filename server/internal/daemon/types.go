@@ -38,6 +38,8 @@ type Task struct {
 	TriggerCommentContent string     `json:"trigger_comment_content,omitempty"` // content of the triggering comment
 	ChatSessionID         string     `json:"chat_session_id,omitempty"`         // non-empty for chat tasks
 	ChatMessage           string     `json:"chat_message,omitempty"`            // user message content for chat tasks
+	RetryCount            int        `json:"-"`                                 // in-process retry counter (not persisted)
+	RetryError            string     `json:"-"`                                 // error from the previous failed attempt
 }
 
 // AgentData holds agent details returned by the claim endpoint.
