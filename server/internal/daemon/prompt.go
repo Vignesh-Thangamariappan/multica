@@ -173,7 +173,7 @@ func buildCommentPrompt(task Task, provider string) string {
 			fmt.Fprintf(&b, "⚠️ **Squad leader no_action rule:** If you decide no action is needed, call `multica squad activity %s no_action --reason \"...\"` and EXIT. DO NOT post any comment — not even one that says \"no action needed\" or \"exiting silently\". The squad activity call records your decision; a comment is redundant noise.\n\n", task.IssueID)
 		}
 	}
-	fmt.Fprintf(&b, "Start by running `multica issue get %s --output json` to understand your task, then decide how to proceed.\n\n", task.IssueID)
+	fmt.Fprintf(&b, "Start by running `rtk multica issue get %s --output json` to understand your task, then decide how to proceed.\n\n", task.IssueID)
 	// Comment-reading pointer. Warm path with new comments: issue-wide
 	// since-delta count, but steer the agent to read the triggering thread
 	// first. Warm resumed path with no new comments: the trigger is already
@@ -187,8 +187,10 @@ func buildCommentPrompt(task Task, provider string) string {
 	} else if cold := execenv.BuildColdCommentsHint(task.IssueID, task.TriggerCommentID); cold != "" {
 		b.WriteString(cold)
 	} else {
-		fmt.Fprintf(&b, "Read the discussion: `multica issue comment list %s --output json` (long issue? use `--recent 20`).\n\n", task.IssueID)
+		fmt.Fprintf(&b, "Read the discussion: `rtk multica issue comment list %s --output json` (long issue? use `--recent 20`).\n\n", task.IssueID)
 	}
+	b.WriteString("If the work requested was already completed in a previous session, do NOT redo it — reply with a concise summary of what was done.\n")
+	b.WriteString("Only do new or additional work if the comment explicitly asks for something that has not already been completed.\n")
 	b.WriteString(execenv.BuildCommentReplyInstructions(provider, task.IssueID, task.TriggerCommentID))
 	return b.String()
 }
