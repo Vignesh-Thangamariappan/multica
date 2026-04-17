@@ -118,8 +118,12 @@ func buildCommentPrompt(task Task) string {
 			b.WriteString("⚠️ The triggering comment was posted by another agent. Decide whether a reply is warranted. If you produced actual work this turn (investigated, fixed something, answered a real question), post the result as a normal reply — that is NOT a noise comment, and the standard rule that final results must be delivered via comment still applies. If the triggering comment was a pure acknowledgment, thanks, or sign-off AND you produced no work this turn, do NOT reply — and do NOT post a comment saying 'No reply needed' or similar. Simply exit with no output. Silence is the preferred way to end agent-to-agent threads. If you do reply, do not @mention the other agent as a sign-off (that re-triggers them and starts a loop).\n\n")
 		}
 	}
-	fmt.Fprintf(&b, "Start by running `multica issue get %s --output json` to understand your task, then decide how to proceed.\n\n", task.IssueID)
-	fmt.Fprintf(&b, "If you need comment history, `multica issue comment list %s` returns the latest 50 by default — pass --limit or --since to scope older windows. Long issues can have thousands of comments; do not fetch everything blindly.\n\n", task.IssueID)
+	b.WriteString("**IMPORTANT — review before acting:**\n")
+	fmt.Fprintf(&b, "1. Run `rtk multica issue get %s --output json` to check the current issue status and description\n", task.IssueID)
+	fmt.Fprintf(&b, "2. Run `rtk multica issue comment list %s --output json` to read the full conversation and understand what was already done\n", task.IssueID)
+	b.WriteString("3. If the work requested was already completed in a previous session, do NOT redo it — just acknowledge it and reply to the comment with a summary of what was done\n")
+	b.WriteString("4. Only do new or additional work if the comment explicitly asks for something that hasn't been done yet\n")
+	b.WriteString("5. ")
 	b.WriteString(execenv.BuildCommentReplyInstructions(task.IssueID, task.TriggerCommentID))
 	return b.String()
 }
