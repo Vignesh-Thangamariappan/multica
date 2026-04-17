@@ -20,6 +20,7 @@ type S3Storage struct {
 	bucket      string
 	cdnDomain   string // if set, returned URLs use this instead of bucket name
 	endpointURL string // if set, use path-style URLs (e.g. MinIO)
+	publicURL   string // if set, used for returned URLs instead of endpointURL (e.g. localhost vs internal Docker hostname)
 }
 
 // NewS3StorageFromEnv creates an S3Storage from environment variables.
@@ -62,6 +63,7 @@ func NewS3StorageFromEnv() *S3Storage {
 	cdnDomain := os.Getenv("CLOUDFRONT_DOMAIN")
 
 	endpointURL := os.Getenv("AWS_ENDPOINT_URL")
+	publicURL := os.Getenv("S3_PUBLIC_URL")
 	s3Opts := []func(*s3.Options){}
 	if endpointURL != "" {
 		s3Opts = append(s3Opts, func(o *s3.Options) {
@@ -70,12 +72,13 @@ func NewS3StorageFromEnv() *S3Storage {
 		})
 	}
 
-	slog.Info("S3 storage initialized", "bucket", bucket, "region", region, "cdn_domain", cdnDomain, "endpoint_url", endpointURL)
+	slog.Info("S3 storage initialized", "bucket", bucket, "region", region, "cdn_domain", cdnDomain, "endpoint_url", endpointURL, "public_url", publicURL)
 	return &S3Storage{
 		client:      s3.NewFromConfig(cfg, s3Opts...),
 		bucket:      bucket,
 		cdnDomain:   cdnDomain,
 		endpointURL: endpointURL,
+		publicURL:   publicURL,
 	}
 }
 
@@ -159,7 +162,11 @@ func (s *S3Storage) Upload(ctx context.Context, key string, data []byte, content
 	}
 
 	if s.endpointURL != "" {
-		link := fmt.Sprintf("%s/%s/%s", strings.TrimRight(s.endpointURL, "/"), s.bucket, key)
+		base := s.endpointURL
+		if s.publicURL != "" {
+			base = s.publicURL
+		}
+		link := fmt.Sprintf("%s/%s/%s", strings.TrimRight(base, "/"), s.bucket, key)
 		return link, nil
 	}
 	domain := s.bucket
