@@ -418,7 +418,7 @@ function CommentCardImpl({
 }: CommentCardProps) {
   const { t } = useT("issues");
   const { getActorName } = useActorName();
-  const { uploadWithToast } = useFileUpload(api);
+  const { uploadWithToast } = useFileUpload(api, (err) => toast.error(err.message));
   const isCollapsed = useCommentCollapseStore((s) => s.isCollapsed(issueId, entry.id));
   const toggleCollapse = useCommentCollapseStore((s) => s.toggle);
   const open = !isCollapsed;
