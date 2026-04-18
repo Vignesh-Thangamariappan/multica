@@ -139,7 +139,7 @@ export const FileCardExtension = Node.create({
       return src.search(/^!file\[/m);
     },
     tokenize(src: string) {
-      const match = src.match(/^!file\[([^\]]*)\]\((https?:\/\/[^)]+)\)/);
+      const match = src.match(/^!file\[([^\]]*)\]\(((?:https?:\/\/|\/)[^)]+)\)/);
       if (!match) return undefined;
       return {
         type: "fileCard",
