@@ -213,6 +213,35 @@ function buildComponents(): Partial<Components> {
       </div>
     ),
 
+    // FileCard — intercept <div data-type="fileCard"> from preprocessMarkdown
+    div: ({ node, children, ...props }) => {
+      const dataType = node?.properties?.dataType as string | undefined;
+      if (dataType === "fileCard") {
+        const rawHref = (node?.properties?.dataHref as string) || "";
+        // Allow https?:// (absolute CDN/S3 URLs) and / (local-storage relative URLs).
+        const href = /^(https?:\/\/|\/)/.test(rawHref) ? rawHref : "";
+        const filename = (node?.properties?.dataFilename as string) || "";
+        return (
+          <div className="my-1 flex items-center gap-2 rounded-md border border-border bg-muted/50 px-2.5 py-1 transition-colors hover:bg-muted">
+            <FileText className="size-4 shrink-0 text-muted-foreground" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm">{filename}</p>
+            </div>
+            {href && (
+              <button
+                type="button"
+                className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                onClick={() => window.open(href, "_blank", "noopener,noreferrer")}
+              >
+                <Download className="size-3.5" />
+              </button>
+            )}
+          </div>
+        );
+      }
+      return <div {...props}>{children}</div>;
+    },
+
     // Code — lowlight highlighting for blocks, plain render for inline
     code: ({ className, children, node, ...props }) => {
       const lang = /language-(\w+)/.exec(className || "")?.[1];
