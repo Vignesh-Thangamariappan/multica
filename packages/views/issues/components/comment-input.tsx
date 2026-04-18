@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "sonner";
 import { useRef, useState, useCallback, useEffect } from "react";
 import { Maximize2, Minimize2 } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@multica/ui/components/ui/tooltip";
@@ -31,7 +32,7 @@ function CommentInput({ issueId, onSubmit }: CommentInputProps) {
   const [submitting, setSubmitting] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const uploadMapRef = useRef<Map<string, string>>(new Map());
-  const { uploadWithToast } = useFileUpload(api);
+  const { uploadWithToast } = useFileUpload(api, (err) => toast.error(err.message));
   const { isDragOver, dropZoneProps } = useFileDropZone({
     onDrop: (files) => files.forEach((f) => editorRef.current?.uploadFile(f)),
   });
