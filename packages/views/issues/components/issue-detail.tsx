@@ -338,7 +338,7 @@ export function IssueDetail({ issueId, onDelete, defaultSidebarOpen = true, layo
   const currentMemberRole = members.find((m) => m.user_id === user?.id)?.role;
   const { data: allIssues = [] } = useQuery(issueListOptions(wsId));
   const { getActorName } = useActorName();
-  const { uploadWithToast } = useFileUpload(api);
+  const { uploadWithToast } = useFileUpload(api, (err) => toast.error(err.message));
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({
     id: layoutId,
   });

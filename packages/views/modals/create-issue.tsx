@@ -80,7 +80,7 @@ export function CreateIssueModal({ onClose, data }: { onClose: () => void; data?
 
   // File upload — collect attachment IDs so we can link them after issue creation.
   const [attachmentIds, setAttachmentIds] = useState<string[]>([]);
-  const { uploadWithToast } = useFileUpload(api);
+  const { uploadWithToast } = useFileUpload(api, (err) => toast.error(err.message));
   const handleUpload = async (file: File) => {
     const result = await uploadWithToast(file);
     if (result) {

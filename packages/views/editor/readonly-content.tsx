@@ -208,8 +208,8 @@ const components: Partial<Components> = {
     const dataType = node?.properties?.dataType as string | undefined;
     if (dataType === "fileCard") {
       const rawHref = (node?.properties?.dataHref as string) || "";
-      // Only allow http(s) URLs to prevent javascript: and other dangerous schemes.
-      const href = /^https?:\/\//i.test(rawHref) ? rawHref : "";
+      // Allow https?:// (absolute CDN/S3 URLs) and / (local-storage relative URLs).
+      const href = /^(https?:\/\/|\/)/.test(rawHref) ? rawHref : "";
       const filename = (node?.properties?.dataFilename as string) || "";
       return (
         <div className="my-1 flex items-center gap-2 rounded-md border border-border bg-muted/50 px-2.5 py-1 transition-colors hover:bg-muted">
