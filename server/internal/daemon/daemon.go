@@ -3010,7 +3010,7 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, slot i
 			retryTask.RetryCount = 1
 			retryTask.PriorSessionID = result.SessionID
 			retryTask.RetryError = errMsg
-			return d.runTask(ctx, retryTask, provider, taskLog)
+			return d.runTask(ctx, retryTask, provider, slot, taskLog)
 		}
 
 		// Forward SessionID/WorkDir on the blocked path: backends commonly
