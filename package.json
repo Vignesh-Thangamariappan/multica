@@ -8,6 +8,7 @@
     "dev:docs": "turbo dev --filter=@multica/docs",
     "dev:desktop": "turbo dev --filter=@multica/desktop",
     "dev:desktop:staging": "turbo dev:staging --filter=@multica/desktop",
+    "build:desktop": "bash scripts/build-desktop.sh",
     "build": "turbo build",
     "typecheck": "turbo typecheck",
     "test": "turbo test",
