@@ -58,6 +58,7 @@ import { useIssueTimeline } from "../hooks/use-issue-timeline";
 import { useIssueReactions } from "../hooks/use-issue-reactions";
 import { useIssueSubscribers } from "../hooks/use-issue-subscribers";
 import { ReactionBar } from "@multica/ui/components/common/reaction-bar";
+import { toast } from "sonner";
 import { useFileUpload } from "@multica/core/hooks/use-file-upload";
 import { api } from "@multica/core/api";
 import { timeAgo } from "@multica/core/utils";
