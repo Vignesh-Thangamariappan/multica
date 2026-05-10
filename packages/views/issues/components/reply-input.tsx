@@ -1,6 +1,5 @@
 "use client";
 
-import { toast } from "sonner";
 import { useRef, useState, useCallback, useEffect } from "react";
 import { ArrowUp, Loader2, Maximize2, Minimize2 } from "lucide-react";
 import { ContentEditor, type ContentEditorRef, useFileDropZone, FileDropOverlay } from "../../editor";
