@@ -1,6 +1,5 @@
 "use client";
 
-import { toast } from "sonner";
 import { useRef, useState, useCallback, useEffect } from "react";
 import { Maximize2, Minimize2 } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@multica/ui/components/ui/tooltip";
