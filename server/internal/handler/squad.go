@@ -118,8 +118,8 @@ func (h *Handler) ListSquads(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) CreateSquad(w http.ResponseWriter, r *http.Request) {
-	workspaceID := workspaceIDFromURL(r, "workspaceId")
-	member, ok := h.requireWorkspaceRole(w, r, workspaceID, "workspace not found", "owner", "admin")
+	workspaceID := h.resolveWorkspaceID(r)
+	member, ok := h.workspaceMember(w, r, workspaceID)
 	if !ok {
 		return
 	}
