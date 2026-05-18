@@ -13,6 +13,7 @@ func TestBuildGeminiArgsBaseline(t *testing.T) {
 	expected := []string{
 		"-p", "write a haiku",
 		"--yolo",
+		"--skip-trust",
 		"-o", "stream-json",
 	}
 
