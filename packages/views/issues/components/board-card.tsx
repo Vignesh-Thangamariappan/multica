@@ -227,7 +227,7 @@ export const BoardCardContent = memo(function BoardCardContent({
             editable ? (
               <PickerWrapper className="shrink-0">
                 <StartDatePicker
-                  startDate={issue.start_date}
+                  startDate={issue.start_date ?? null}
                   onUpdate={handleUpdate}
                   trigger={
                     <span className="flex items-center gap-1 text-xs text-muted-foreground">
