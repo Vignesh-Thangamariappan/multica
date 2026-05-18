@@ -1268,7 +1268,7 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
           {visibleOptionalProps.has("start_date") && (
             <PropRow label={t(($) => $.detail.prop_start_date)}>
               <StartDatePicker
-                startDate={issue.start_date}
+                startDate={issue.start_date ?? null}
                 onUpdate={handleUpdateField}
                 defaultOpen={autoOpenProp === "start_date"}
               />
