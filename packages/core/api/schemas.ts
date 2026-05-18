@@ -150,7 +150,7 @@ const IssueSchema = z.object({
   parent_issue_id: z.string().nullable(),
   project_id: z.string().nullable(),
   position: z.number(),
-  start_date: z.string().nullable(),
+  start_date: z.string().nullable().optional(),
   due_date: z.string().nullable(),
   reactions: z.array(z.unknown()).optional(),
   labels: z.array(z.unknown()).optional(),
