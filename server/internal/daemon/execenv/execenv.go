@@ -77,6 +77,7 @@ type AttachmentContextForEnv struct {
 	ID          string
 	Filename    string
 	ContentType string
+}
 
 // SkillContextForEnv represents a skill to be written into the execution environment.
 type SkillContextForEnv struct {
