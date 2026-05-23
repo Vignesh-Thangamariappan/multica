@@ -91,7 +91,7 @@ function computeRange(issues: Issue[], today: Date, zoom: GanttZoom): Range {
   let minTs = today.getTime() - defaultPad[zoom] * MS_PER_DAY;
   let maxTs = today.getTime() + defaultPad[zoom] * MS_PER_DAY;
   for (const i of issues) {
-    const s = parseDay(i.start_date);
+    const s = parseDay(i.start_date ?? null);
     const e = parseDay(i.due_date);
     if (s && s.getTime() < minTs) minTs = s.getTime();
     if (e && e.getTime() > maxTs) maxTs = e.getTime();
@@ -323,7 +323,7 @@ function ScheduledRow({
   });
   const project = issue.project_id ? projects.find((pr) => pr.id === issue.project_id) : undefined;
 
-  const start = parseDay(issue.start_date);
+  const start = parseDay(issue.start_date ?? null);
   const due = parseDay(issue.due_date);
 
   // start > due is a data anomaly (backend only validates RFC3339, not order).
