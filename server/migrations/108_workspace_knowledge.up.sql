@@ -1,4 +1,4 @@
-CREATE TABLE workspace_knowledge (
+CREATE TABLE IF NOT EXISTS workspace_knowledge (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     workspace_id UUID NOT NULL REFERENCES workspace(id) ON DELETE CASCADE,
     agent_id UUID REFERENCES agent(id) ON DELETE SET NULL,
@@ -11,7 +11,7 @@ CREATE TABLE workspace_knowledge (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX workspace_knowledge_workspace_created_idx
+CREATE INDEX IF NOT EXISTS workspace_knowledge_workspace_created_idx
     ON workspace_knowledge(workspace_id, created_at DESC);
-CREATE INDEX workspace_knowledge_workspace_status_idx
+CREATE INDEX IF NOT EXISTS workspace_knowledge_workspace_status_idx
     ON workspace_knowledge(workspace_id, status);
