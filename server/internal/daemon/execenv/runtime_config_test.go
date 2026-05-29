@@ -263,7 +263,7 @@ func TestAssignmentTriggeredProtocolStillFlipsInReview(t *testing.T) {
 	ctx := TaskContextForEnv{IssueID: issueID}
 	out := buildMetaSkillContent("claude", ctx)
 
-	want := "`multica issue status " + issueID + " in_review`"
+	want := "`rtk multica issue status " + issueID + " in_review`"
 	if !strings.Contains(out, want) {
 		t.Errorf("assignment-triggered brief must still flip to in_review on completion (expected %q in the workflow above)", want)
 	}
