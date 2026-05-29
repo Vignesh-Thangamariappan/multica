@@ -608,7 +608,7 @@ func buildMetaSkillContent(provider string, ctx TaskContextForEnv) string {
 			b.WriteString("   - If you produced actual work this turn (investigated, fixed, answered a real question), post the result via step 7 — that is a normal reply, not a noise comment.\n")
 			fmt.Fprintf(&b, "   - **Squad leader rule:** If your evaluation outcome is `no_action`, call `multica squad activity %s no_action --reason \"...\"` and then EXIT IMMEDIATELY. DO NOT post any comment whose only purpose is to announce that you are taking no action, exiting silently, or acknowledging another agent. A comment like \"No action needed\" or \"Exiting silently\" is noise — the `squad activity` call already records your decision in the timeline.\n", ctx.IssueID)
 		} else {
-			b.WriteString("5. **Decide whether to act.** Check prior progress and the triggering comment:\n")
+			b.WriteString("5. **Decide whether a reply is warranted.** Check prior progress and the triggering comment:\n")
 			b.WriteString("   - If the triggering comment is an acknowledgment / thanks / sign-off from another agent and no concrete question or task is being asked of you, do NOT post a reply — just exit. Silence is a valid and preferred way to end agent-to-agent conversations.\n")
 			b.WriteString("   - If the requested work was already completed in a previous session → do NOT redo it. Reply with a summary of what was done.\n")
 			b.WriteString("   - If the comment asks for something new or additional → do only that new work, then reply with your results.\n")
