@@ -335,3 +335,47 @@ describe("parseWithFallback", () => {
     expect(out).toBe(fallback);
   });
 });
+
+describe("listKnowledge", () => {
+  it("falls back to an empty array when the body is null", async () => {
+    stubFetchJson(null);
+    const client = new ApiClient("https://api.example.test");
+    const entries = await client.listKnowledge("pending");
+    expect(entries).toEqual([]);
+  });
+
+  it("falls back when the body is not an array", async () => {
+    stubFetchJson({ wrong: "shape" });
+    const client = new ApiClient("https://api.example.test");
+    const entries = await client.listKnowledge("active");
+    expect(entries).toEqual([]);
+  });
+
+  it("falls back when an entry is missing required fields", async () => {
+    stubFetchJson([{ id: "k-1" }]);
+    const client = new ApiClient("https://api.example.test");
+    const entries = await client.listKnowledge("pending");
+    expect(entries).toEqual([]);
+  });
+
+  it("accepts entries with unknown statuses and extra fields", async () => {
+    stubFetchJson([
+      {
+        id: "k-1",
+        workspace_id: "ws-1",
+        agent_id: null,
+        content: "Always check metadata before creating a PR.",
+        status: "quarantined",
+        created_at: "2026-06-04T00:00:00Z",
+        future_field: { nested: true },
+      },
+    ]);
+    const client = new ApiClient("https://api.example.test");
+    const entries = await client.listKnowledge("pending");
+    expect(entries).toHaveLength(1);
+    expect(entries[0]!.status).toBe("quarantined");
+    expect((entries[0] as unknown as Record<string, unknown>).future_field).toEqual({
+      nested: true,
+    });
+  });
+});

@@ -27,6 +27,7 @@ import {
   Plus,
   Check,
   BookOpenText,
+  Library,
   SquarePen,
   CircleUser,
   FolderKanban,
@@ -114,6 +115,7 @@ type NavKey =
   | "squads"
   | "usage"
   | "runtimes"
+  | "knowledge"
   | "skills"
   | "settings";
 
@@ -128,6 +130,7 @@ type NavLabelKey =
   | "squads"
   | "usage"
   | "runtimes"
+  | "knowledge"
   | "skills"
   | "settings";
 
@@ -147,6 +150,7 @@ const workspaceNav: { key: NavKey; labelKey: NavLabelKey; icon: typeof Inbox }[]
 
 const configureNav: { key: NavKey; labelKey: NavLabelKey; icon: typeof Inbox }[] = [
   { key: "runtimes", labelKey: "runtimes", icon: Monitor },
+  { key: "knowledge", labelKey: "knowledge", icon: Library },
   { key: "skills", labelKey: "skills", icon: BookOpenText },
   { key: "settings", labelKey: "settings", icon: Settings },
 ];

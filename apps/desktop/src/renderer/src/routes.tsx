@@ -19,6 +19,7 @@ import { ProjectsPage } from "@multica/views/projects/components";
 import { DashboardPage } from "@multica/views/dashboard";
 import { AutopilotsPage } from "@multica/views/autopilots/components";
 import { MyIssuesPage } from "@multica/views/my-issues";
+import { KnowledgePage } from "@multica/views/knowledge";
 import { SkillsPage } from "@multica/views/skills";
 import { DesktopRuntimesPage } from "./components/desktop-runtimes-page";
 import { DesktopAgentsPage } from "./components/desktop-agents-page";
@@ -162,6 +163,7 @@ export const appRoutes: RouteObject[] = [
             element: <RuntimeDetailPage />,
             handle: { title: "Runtime" },
           },
+          { path: "knowledge", element: <KnowledgePage />, handle: { title: "Knowledge" } },
           { path: "skills", element: <SkillsPage />, handle: { title: "Skills" } },
           {
             path: "skills/:id",

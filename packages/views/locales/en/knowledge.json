@@ -1,0 +1,40 @@
+{
+  "page": {
+    "title": "Knowledge",
+    "tagline": "Lessons agents learn from their work. Approved entries are injected into every agent run in this workspace.",
+    "load_failed": "Couldn't load knowledge entries",
+    "try_again": "Try again"
+  },
+  "tabs": {
+    "pending": "Pending",
+    "active": "Active",
+    "rejected": "Rejected"
+  },
+  "empty": {
+    "pending": {
+      "title": "No pending proposals",
+      "description": "When agents propose new knowledge from their runs, it shows up here for your review."
+    },
+    "active": {
+      "title": "No active knowledge yet",
+      "description": "Approve pending proposals or add an entry — active knowledge is injected into every agent run."
+    },
+    "rejected": {
+      "title": "No rejected entries",
+      "description": "Rejected proposals are kept here for audit."
+    }
+  },
+  "actions": {
+    "approve": "Approve",
+    "reject": "Reject",
+    "delete": "Delete"
+  },
+  "card": {
+    "agent": "Agent",
+    "member": "Member"
+  },
+  "add": {
+    "placeholder": "Add knowledge agents should follow…",
+    "submit": "Add"
+  }
+}

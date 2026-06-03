@@ -57,6 +57,7 @@ export type { InboxItem, InboxSeverity, InboxItemType } from "./inbox";
 export type { NotificationGroupKey, NotificationGroupValue, NotificationPreferences, NotificationPreferenceResponse } from "./notification-preference";
 export type { Comment, CommentType, CommentAuthorType, Reaction } from "./comment";
 export type { Label, CreateLabelRequest, UpdateLabelRequest, ListLabelsResponse, IssueLabelsResponse } from "./label";
+export type { WorkspaceKnowledge, KnowledgeStatus, CreateKnowledgeRequest } from "./knowledge";
 export type {
   TimelineEntry,
   AssigneeFrequencyEntry,

@@ -2,6 +2,7 @@ import { z } from "zod";
 import type {
   Agent,
   AgentTemplate,
+  WorkspaceKnowledge,
   AgentTemplateSummary,
   Attachment,
   BillingBalance,
@@ -877,3 +878,19 @@ export const CreateBillingPortalSessionResponseSchema = z.object({
 export const EMPTY_CREATE_BILLING_PORTAL_SESSION_RESPONSE: CreateBillingPortalSessionResponse = {
   url: "",
 };
+
+// Workspace knowledge — agent-proposed lessons gated by human review.
+export const WorkspaceKnowledgeSchema = z.object({
+  id: z.string(),
+  workspace_id: z.string(),
+  agent_id: z.string().nullable().optional(),
+  content: z.string(),
+  // Server-driven string ("active" | "pending" | "rejected" today) — kept as
+  // z.string() so new statuses degrade instead of failing validation.
+  status: z.string(),
+  created_at: z.string(),
+}).loose();
+
+export const WorkspaceKnowledgeListSchema = z.array(WorkspaceKnowledgeSchema);
+
+export const EMPTY_KNOWLEDGE_LIST: WorkspaceKnowledge[] = [];
