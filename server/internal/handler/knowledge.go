@@ -43,8 +43,12 @@ func (h *Handler) ListWorkspaceKnowledge(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	wsUUID, ok := parseUUIDOrBadRequest(w, wsID, "workspace_id")
+	if !ok {
+		return
+	}
 	entries, err := h.Queries.ListWorkspaceKnowledgeByStatus(r.Context(), db.ListWorkspaceKnowledgeByStatusParams{
-		WorkspaceID: parseUUID(wsID),
+		WorkspaceID: wsUUID,
 		Status:      status,
 		Limit:       100,
 	})
@@ -79,8 +83,12 @@ func (h *Handler) CreateWorkspaceKnowledge(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	wsUUID, ok := parseUUIDOrBadRequest(w, wsID, "workspace_id")
+	if !ok {
+		return
+	}
 	entry, err := h.Queries.CreateWorkspaceKnowledge(r.Context(), db.CreateWorkspaceKnowledgeParams{
-		WorkspaceID: parseUUID(wsID),
+		WorkspaceID: wsUUID,
 		Content:     req.Content,
 		Status:      "active",
 	})
@@ -112,18 +120,28 @@ func (h *Handler) ProposeWorkspaceKnowledge(w http.ResponseWriter, r *http.Reque
 	agentIDStr := r.Header.Get("X-Agent-ID")
 	var agentID pgtype.UUID
 	if agentIDStr != "" {
-		agentID = parseUUID(agentIDStr)
+		var ok bool
+		if agentID, ok = parseUUIDOrBadRequest(w, agentIDStr, "X-Agent-ID"); !ok {
+			return
+		}
 	}
 
 	// Resolve source task from context (set by daemon via X-Task-ID header).
 	taskIDStr := r.Header.Get("X-Task-ID")
 	var taskID pgtype.UUID
 	if taskIDStr != "" {
-		taskID = parseUUID(taskIDStr)
+		var ok bool
+		if taskID, ok = parseUUIDOrBadRequest(w, taskIDStr, "X-Task-ID"); !ok {
+			return
+		}
 	}
 
+	wsUUID, ok := parseUUIDOrBadRequest(w, wsID, "workspace_id")
+	if !ok {
+		return
+	}
 	entry, err := h.Queries.CreateWorkspaceKnowledge(r.Context(), db.CreateWorkspaceKnowledgeParams{
-		WorkspaceID:  parseUUID(wsID),
+		WorkspaceID:  wsUUID,
 		AgentID:      agentID,
 		Content:      req.Content,
 		SourceTaskID: taskID,
@@ -142,9 +160,17 @@ func (h *Handler) ApproveWorkspaceKnowledge(w http.ResponseWriter, r *http.Reque
 	wsID := workspaceIDFromURL(r, "id")
 	kid := chi.URLParam(r, "kid")
 
+	kidUUID, ok := parseUUIDOrBadRequest(w, kid, "knowledge_id")
+	if !ok {
+		return
+	}
+	wsUUID, ok := parseUUIDOrBadRequest(w, wsID, "workspace_id")
+	if !ok {
+		return
+	}
 	entry, err := h.Queries.UpdateWorkspaceKnowledgeStatus(r.Context(), db.UpdateWorkspaceKnowledgeStatusParams{
-		ID:          parseUUID(kid),
-		WorkspaceID: parseUUID(wsID),
+		ID:          kidUUID,
+		WorkspaceID: wsUUID,
 		Status:      "active",
 	})
 	if err != nil {
@@ -159,9 +185,17 @@ func (h *Handler) RejectWorkspaceKnowledge(w http.ResponseWriter, r *http.Reques
 	wsID := workspaceIDFromURL(r, "id")
 	kid := chi.URLParam(r, "kid")
 
+	kidUUID, ok := parseUUIDOrBadRequest(w, kid, "knowledge_id")
+	if !ok {
+		return
+	}
+	wsUUID, ok := parseUUIDOrBadRequest(w, wsID, "workspace_id")
+	if !ok {
+		return
+	}
 	entry, err := h.Queries.UpdateWorkspaceKnowledgeStatus(r.Context(), db.UpdateWorkspaceKnowledgeStatusParams{
-		ID:          parseUUID(kid),
-		WorkspaceID: parseUUID(wsID),
+		ID:          kidUUID,
+		WorkspaceID: wsUUID,
 		Status:      "rejected",
 	})
 	if err != nil {
@@ -176,9 +210,17 @@ func (h *Handler) DeleteWorkspaceKnowledge(w http.ResponseWriter, r *http.Reques
 	wsID := workspaceIDFromURL(r, "id")
 	kid := chi.URLParam(r, "kid")
 
+	kidUUID, ok := parseUUIDOrBadRequest(w, kid, "knowledge_id")
+	if !ok {
+		return
+	}
+	wsUUID, ok := parseUUIDOrBadRequest(w, wsID, "workspace_id")
+	if !ok {
+		return
+	}
 	if err := h.Queries.DeleteWorkspaceKnowledge(r.Context(), db.DeleteWorkspaceKnowledgeParams{
-		ID:          parseUUID(kid),
-		WorkspaceID: parseUUID(wsID),
+		ID:          kidUUID,
+		WorkspaceID: wsUUID,
 	}); err != nil {
 		writeError(w, http.StatusNotFound, "knowledge entry not found")
 		return
