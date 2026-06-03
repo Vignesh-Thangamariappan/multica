@@ -739,10 +739,11 @@ func buildMetaSkillContent(provider string, ctx TaskContextForEnv) string {
 
 	if len(ctx.WorkspaceKnowledge) > 0 {
 		b.WriteString("## Workspace Knowledge\n\n")
-		b.WriteString("Learnings accumulated from previous agent runs in this workspace. Apply these when relevant:\n\n")
-		for _, entry := range ctx.WorkspaceKnowledge {
-			fmt.Fprintf(&b, "- %s\n", entry)
+		b.WriteString("These are workspace rules distilled from failures in previous agent runs. Each one was human-reviewed and approved. **Follow them** — they are not suggestions. Only deviate when the current task explicitly contradicts a rule, and say so in your output when you do.\n\n")
+		for i, entry := range ctx.WorkspaceKnowledge {
+			fmt.Fprintf(&b, "%d. %s\n", i+1, entry)
 		}
+		b.WriteString("\nThis list is capped at the 20 most recent entries. If your task seems related to a past lesson that is not listed, run `rtk multica knowledge list` to see the full set of active rules.\n")
 		b.WriteString("\nTo add new learnings for future agents, run:\n")
 		b.WriteString("```\nrtk multica knowledge propose \"<your learning here>\"\n```\n\n")
 	}

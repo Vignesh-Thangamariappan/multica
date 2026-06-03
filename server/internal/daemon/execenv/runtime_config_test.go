@@ -1225,3 +1225,45 @@ func TestWriteRuntimeConfigFileAlwaysInsertsFixedManagedSeparator(t *testing.T) 
 		})
 	}
 }
+
+func TestWorkspaceKnowledgeSectionFramedAsRules(t *testing.T) {
+	t.Parallel()
+	ctx := TaskContextForEnv{
+		IssueID: "11111111-2222-3333-4444-555555555555",
+		WorkspaceKnowledge: []string{
+			"Always pin pr_url metadata after creating a PR.",
+			"Verify the branch exists on the remote before doing any work.",
+		},
+	}
+	out := buildMetaSkillContent("claude", ctx)
+
+	if !strings.Contains(out, "## Workspace Knowledge") {
+		t.Fatal("expected Workspace Knowledge section when entries are present")
+	}
+	// Rules framing: binding, not advisory.
+	if !strings.Contains(out, "**Follow them**") {
+		t.Fatal("expected binding rules framing in knowledge section")
+	}
+	// Entries are numbered so agents and humans can reference them.
+	if !strings.Contains(out, "1. Always pin pr_url metadata after creating a PR.") ||
+		!strings.Contains(out, "2. Verify the branch exists on the remote before doing any work.") {
+		t.Fatalf("expected numbered knowledge entries, got:\n%s", out)
+	}
+	// On-demand recall is advertised alongside the cap.
+	if !strings.Contains(out, "rtk multica knowledge list") {
+		t.Fatal("expected knowledge list command advertised for on-demand recall")
+	}
+	if !strings.Contains(out, "rtk multica knowledge propose") {
+		t.Fatal("expected knowledge propose command to remain advertised")
+	}
+}
+
+func TestWorkspaceKnowledgeSectionAbsentWithoutEntries(t *testing.T) {
+	t.Parallel()
+	ctx := TaskContextForEnv{IssueID: "11111111-2222-3333-4444-555555555555"}
+	out := buildMetaSkillContent("claude", ctx)
+
+	if strings.Contains(out, "## Workspace Knowledge") {
+		t.Fatal("knowledge section must be omitted when there are no active entries")
+	}
+}
