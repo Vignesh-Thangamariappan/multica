@@ -69,11 +69,13 @@ fi
 
 # ---------- Backup ----------
 TS=$(date +%Y%m%d-%H%M%S)
-SQL_FILE="backup-${TS}.sql"
+# Dumps are gzipped: an uncompressed dump outgrew GitHub's 100 MB file limit
+# (109 MB on 2026-06-04). gzip keeps the repo pushable without LFS.
+SQL_FILE="backup-${TS}.sql.gz"
 
 echo "==> Dumping database \"$POSTGRES_DB\" from container \"$POSTGRES_CONTAINER\"..."
-docker exec "$POSTGRES_CONTAINER" pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" > "${BACKUP_REPO_PATH}/${SQL_FILE}"
-cp "${BACKUP_REPO_PATH}/${SQL_FILE}" "${BACKUP_REPO_PATH}/latest.sql"
+docker exec "$POSTGRES_CONTAINER" pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" | gzip > "${BACKUP_REPO_PATH}/${SQL_FILE}"
+cp "${BACKUP_REPO_PATH}/${SQL_FILE}" "${BACKUP_REPO_PATH}/latest.sql.gz"
 echo "✓ Database dump saved: ${SQL_FILE} ($(du -sh "${BACKUP_REPO_PATH}/${SQL_FILE}" | cut -f1))"
 
 if [ "$BACKUP_UPLOADS" = "1" ]; then
