@@ -47,6 +47,21 @@ vi.mock("@multica/core/workspace/queries", () => ({
   agentListOptions: () => ({ queryKey: ["agents"] }),
 }));
 
+vi.mock("@multica/core/workspace/hooks", () => ({
+  useActorName: () => ({
+    getAgentName: (id: string) => `Agent ${id}`,
+    getMemberName: (id: string) => `Member ${id}`,
+  }),
+}));
+
+// ActorAvatar drags in hover-cards, presence, and profile cards — irrelevant
+// to page behavior under test.
+vi.mock("../../common/actor-avatar", () => ({
+  ActorAvatar: ({ actorId }: { actorId: string }) => (
+    <span data-testid={`avatar-${actorId}`} />
+  ),
+}));
+
 vi.mock("@tanstack/react-query", () => ({
   useQuery: (opts: { queryKey: readonly unknown[] }) => {
     if (opts.queryKey[0] === "knowledge") {
@@ -118,12 +133,14 @@ describe("KnowledgePage", () => {
     expect(screen.queryByRole("button", { name: /reject/i })).toBeNull();
   });
 
-  it("shows the pending count in the tab label", () => {
+  it("shows per-status counts in every tab label", () => {
     pendingRef.current = [
       entry("k-1", "A", "pending"),
       entry("k-2", "B", "pending"),
     ];
     renderPage();
-    expect(screen.getByRole("tab", { name: /pending \(2\)/i })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: /pending\s*2/i })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: /active\s*0/i })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: /rejected\s*0/i })).toBeTruthy();
   });
 });

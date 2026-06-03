@@ -1,7 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertCircle, Bot, Check, Library, Trash2, User, X } from "lucide-react";
+import {
+  AlertCircle,
+  Check,
+  CircleDashed,
+  Library,
+  Trash2,
+  User,
+  X,
+} from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@multica/core/auth";
 import { useWorkspaceId } from "@multica/core/hooks";
@@ -13,10 +21,8 @@ import {
   useRejectKnowledge,
 } from "@multica/core/knowledge/mutations";
 import type { WorkspaceKnowledge } from "@multica/core/types";
-import {
-  agentListOptions,
-  memberListOptions,
-} from "@multica/core/workspace/queries";
+import { memberListOptions } from "@multica/core/workspace/queries";
+import { useActorName } from "@multica/core/workspace/hooks";
 import { Badge } from "@multica/ui/components/ui/badge";
 import { Button } from "@multica/ui/components/ui/button";
 import { Skeleton } from "@multica/ui/components/ui/skeleton";
@@ -27,12 +33,37 @@ import {
   TabsTrigger,
 } from "@multica/ui/components/ui/tabs";
 import { Textarea } from "@multica/ui/components/ui/textarea";
+import { cn } from "@multica/ui/lib/utils";
+import { ActorAvatar } from "../../common/actor-avatar";
 import { PageHeader } from "../../layout/page-header";
 import { useT, useTimeAgo } from "../../i18n";
 
 type StatusTab = "pending" | "active" | "rejected";
 
 const STATUS_TABS: StatusTab[] = ["pending", "active", "rejected"];
+
+// Status accents follow the pull-request-list convention:
+// emerald = good/landed, amber = waiting on a human, red = closed/refused.
+const STATUS_STYLES: Record<
+  StatusTab,
+  { card: string; dot: string; icon: typeof Check }
+> = {
+  pending: {
+    card: "border-l-amber-500 dark:border-l-amber-400",
+    dot: "text-amber-600 dark:text-amber-400",
+    icon: CircleDashed,
+  },
+  active: {
+    card: "border-l-emerald-500 dark:border-l-emerald-400",
+    dot: "text-emerald-600 dark:text-emerald-400",
+    icon: Check,
+  },
+  rejected: {
+    card: "border-l-red-500/70 dark:border-l-red-400/70",
+    dot: "text-red-600 dark:text-red-400",
+    icon: X,
+  },
+};
 
 function KnowledgeCard({
   entry,
@@ -50,18 +81,32 @@ function KnowledgeCard({
   const approve = useApproveKnowledge();
   const reject = useRejectKnowledge();
   const del = useDeleteKnowledge();
+  const style = STATUS_STYLES[tab];
+  const StatusIcon = style.icon;
 
   return (
-    <div className="rounded-lg border bg-card p-4 flex flex-col gap-3">
+    <div
+      className={cn(
+        "rounded-lg border border-l-2 bg-card p-4 flex flex-col gap-3",
+        style.card,
+        tab === "rejected" && "opacity-75",
+      )}
+    >
       <p className="text-sm whitespace-pre-wrap break-words">{entry.content}</p>
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <StatusIcon className={cn("size-3.5", style.dot)} />
         {entry.agent_id ? (
-          <span className="inline-flex items-center gap-1">
-            <Bot className="size-3.5" />
+          <span className="inline-flex items-center gap-1.5">
+            <ActorAvatar
+              actorType="agent"
+              actorId={entry.agent_id}
+              size={16}
+              enableHoverCard
+            />
             {agentName ?? t(($) => $.card.agent)}
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1">
+          <span className="inline-flex items-center gap-1.5">
             <User className="size-3.5" />
             {t(($) => $.card.member)}
           </span>
@@ -74,7 +119,7 @@ function KnowledgeCard({
               <Button
                 size="sm"
                 variant="outline"
-                className="h-7"
+                className="h-7 text-emerald-600 dark:text-emerald-400"
                 disabled={approve.isPending}
                 onClick={() => approve.mutate(entry.id)}
               >
@@ -146,17 +191,20 @@ function AddKnowledgeBox() {
 function TabBody({
   tab,
   isAdmin,
-  agentNames,
+  entries,
+  isLoading,
+  isError,
+  refetch,
 }: {
   tab: StatusTab;
   isAdmin: boolean;
-  agentNames: Map<string, string>;
+  entries: WorkspaceKnowledge[] | undefined;
+  isLoading: boolean;
+  isError: boolean;
+  refetch: () => void;
 }) {
   const { t } = useT("knowledge");
-  const wsId = useWorkspaceId();
-  const { data: entries, isLoading, isError, refetch } = useQuery(
-    knowledgeListOptions(wsId, tab),
-  );
+  const { getAgentName } = useActorName();
 
   if (isLoading) {
     return (
@@ -175,7 +223,7 @@ function TabBody({
         <p className="text-sm text-muted-foreground">
           {t(($) => $.page.load_failed)}
         </p>
-        <Button size="sm" variant="outline" onClick={() => void refetch()}>
+        <Button size="sm" variant="outline" onClick={() => refetch()}>
           {t(($) => $.page.try_again)}
         </Button>
       </div>
@@ -189,9 +237,7 @@ function TabBody({
       {list.length === 0 ? (
         <div className="flex flex-col items-center gap-2 py-12 text-center">
           <Library className="size-6 text-muted-foreground" />
-          <p className="text-sm font-medium">
-            {t(($) => $.empty[tab].title)}
-          </p>
+          <p className="text-sm font-medium">{t(($) => $.empty[tab].title)}</p>
           <p className="text-sm text-muted-foreground max-w-md">
             {t(($) => $.empty[tab].description)}
           </p>
@@ -201,9 +247,7 @@ function TabBody({
           <KnowledgeCard
             key={entry.id}
             entry={entry}
-            agentName={
-              entry.agent_id ? (agentNames.get(entry.agent_id) ?? null) : null
-            }
+            agentName={entry.agent_id ? getAgentName(entry.agent_id) : null}
             isAdmin={isAdmin}
             tab={tab}
           />
@@ -218,8 +262,13 @@ export function KnowledgePage() {
   const wsId = useWorkspaceId();
   const [tab, setTab] = useState<StatusTab>("pending");
 
-  const { data: pendingEntries } = useQuery(knowledgeListOptions(wsId, "pending"));
-  const pendingCount = pendingEntries?.length ?? 0;
+  // All three lists are queried eagerly: tab labels carry per-status counts,
+  // and switching tabs renders instantly from the warm cache.
+  const pending = useQuery(knowledgeListOptions(wsId, "pending"));
+  const active = useQuery(knowledgeListOptions(wsId, "active"));
+  const rejected = useQuery(knowledgeListOptions(wsId, "rejected"));
+  const queries = { pending, active, rejected } as const;
+  const pendingCount = pending.data?.length ?? 0;
 
   const { data: members = [] } = useQuery(memberListOptions(wsId));
   const currentUser = useAuthStore((s) => s.user);
@@ -229,13 +278,6 @@ export function KnowledgePage() {
   }, [members, currentUser]);
   const isAdmin = myRole === "owner" || myRole === "admin";
 
-  const { data: agents = [] } = useQuery(agentListOptions(wsId));
-  const agentNames = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const a of agents) map.set(a.id, a.name);
-    return map;
-  }, [agents]);
-
   return (
     <div className="flex flex-1 min-h-0 flex-col">
       <PageHeader>
@@ -243,7 +285,10 @@ export function KnowledgePage() {
           <Library className="size-4" />
           <h1 className="text-sm font-medium">{t(($) => $.page.title)}</h1>
           {pendingCount > 0 && (
-            <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+            <Badge
+              variant="secondary"
+              className="h-5 px-1.5 text-xs text-amber-600 dark:text-amber-400"
+            >
               {pendingCount}
             </Badge>
           )}
@@ -256,16 +301,37 @@ export function KnowledgePage() {
         </p>
         <Tabs value={tab} onValueChange={(v) => setTab(v as StatusTab)}>
           <TabsList>
-            {STATUS_TABS.map((s) => (
-              <TabsTrigger key={s} value={s}>
-                {t(($) => $.tabs[s])}
-                {s === "pending" && pendingCount > 0 ? ` (${pendingCount})` : ""}
-              </TabsTrigger>
-            ))}
+            {STATUS_TABS.map((s) => {
+              const count = queries[s].data?.length;
+              return (
+                <TabsTrigger key={s} value={s} className="gap-1.5">
+                  <span
+                    className={cn("size-1.5 rounded-full", {
+                      "bg-amber-500": s === "pending",
+                      "bg-emerald-500": s === "active",
+                      "bg-red-500/70": s === "rejected",
+                    })}
+                  />
+                  {t(($) => $.tabs[s])}
+                  {count !== undefined && (
+                    <span className="text-muted-foreground tabular-nums">
+                      {count}
+                    </span>
+                  )}
+                </TabsTrigger>
+              );
+            })}
           </TabsList>
           {STATUS_TABS.map((s) => (
             <TabsContent key={s} value={s} className="mt-4">
-              <TabBody tab={s} isAdmin={isAdmin} agentNames={agentNames} />
+              <TabBody
+                tab={s}
+                isAdmin={isAdmin}
+                entries={queries[s].data}
+                isLoading={queries[s].isLoading}
+                isError={queries[s].isError}
+                refetch={() => void queries[s].refetch()}
+              />
             </TabsContent>
           ))}
         </Tabs>
