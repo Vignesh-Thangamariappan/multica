@@ -343,5 +343,36 @@
         "description": "Create and work on issues"
       }
     }
+  },
+  "clickup": {
+    "section_title": "ClickUp",
+    "not_configured": "ClickUp integration is disabled on this server. Set MULTICA_CLICKUP_SECRET_KEY to enable it.",
+    "connect_hint": "Connect a ClickUp workspace with a personal API token to import tasks and push issues.",
+    "token_placeholder": "Personal API token (pk_…)",
+    "connect_button": "Connect",
+    "connected_toast": "ClickUp connected",
+    "connect_failed_toast": "ClickUp rejected the token",
+    "admin_only_hint": "Only workspace admins can connect ClickUp.",
+    "connected_as": "Connected ClickUp workspace",
+    "disconnect_button": "Disconnect",
+    "disconnect_confirm_title": "Disconnect ClickUp?",
+    "disconnect_confirm_description": "All project links and task pairings will be removed. Imported issues stay in Multica.",
+    "disconnect_failed_toast": "Failed to disconnect",
+    "links_title": "Project links",
+    "add_link_button": "Link project",
+    "no_links_hint": "No projects linked yet. Link a Multica project to a ClickUp list to import and push tasks.",
+    "import_button": "Import",
+    "importing": "Importing…",
+    "import_done_toast": "Imported {{created}} tasks ({{skipped}} already linked)",
+    "import_failed_toast": "Import failed",
+    "picker_title": "Link a project to a ClickUp list",
+    "picker_description": "Tasks import from the list into the project; issues in the project can be pushed to the list.",
+    "picker_project_placeholder": "Select a Multica project",
+    "picker_list_placeholder": "Select a ClickUp list",
+    "picker_loading_lists": "Loading lists…",
+    "picker_submit": "Create link",
+    "link_created_toast": "Project linked",
+    "link_failed_toast": "Failed to create link",
+    "cancel": "Cancel"
   }
 }

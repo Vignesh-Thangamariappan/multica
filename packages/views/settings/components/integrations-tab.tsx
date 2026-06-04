@@ -1,6 +1,7 @@
 "use client";
 
 import { LarkTab } from "./lark-tab";
+import { ClickUpTab } from "./clickup-tab";
 import { useT } from "../../i18n";
 
 // Integrations is the umbrella tab for third-party platform connections.
@@ -13,6 +14,10 @@ export function IntegrationsTab() {
   const { t } = useT("settings");
   return (
     <div className="space-y-10">
+      <section className="space-y-4">
+        <h2 className="text-sm font-semibold">{t(($) => $.clickup.section_title)}</h2>
+        <ClickUpTab />
+      </section>
       <section className="space-y-4">
         <h2 className="text-sm font-semibold">{t(($) => $.lark.section_title)}</h2>
         <LarkTab />

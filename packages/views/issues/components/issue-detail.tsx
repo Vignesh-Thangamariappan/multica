@@ -58,6 +58,7 @@ import { collectThreadReplies } from "./thread-utils";
 import { AgentLiveCard } from "./agent-live-card";
 import { ExecutionLogSection } from "./execution-log-section";
 import { PullRequestList } from "./pull-request-list";
+import { ClickUpSection } from "./clickup-section";
 import { useGitHubSettings } from "@multica/core/github";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@multica/core/auth";
@@ -1444,6 +1445,11 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
           {pullRequestsOpen && <div className="pl-2"><PullRequestList issueId={id} /></div>}
         </div>
       )}
+
+      {/* ClickUp pairing — renders nothing unless the integration is
+          connected AND this issue is linked (or linkable via its
+          project). See clickup-section.tsx. */}
+      <ClickUpSection issueId={id} projectId={issue.project_id} />
 
       {/* Details */}
       <div>

@@ -2,6 +2,9 @@ import { z } from "zod";
 import type {
   Agent,
   AgentTemplate,
+  ClickUpInstallation,
+  ClickUpLink,
+  ClickUpSpaceTree,
   WorkspaceKnowledge,
   AgentTemplateSummary,
   Attachment,
@@ -894,3 +897,51 @@ export const WorkspaceKnowledgeSchema = z.object({
 export const WorkspaceKnowledgeListSchema = z.array(WorkspaceKnowledgeSchema);
 
 export const EMPTY_KNOWLEDGE_LIST: WorkspaceKnowledge[] = [];
+
+// ClickUp integration (Phase 1) — docs/clickup-integration-rfc.md.
+export const ClickUpInstallationSchema = z.object({
+  configured: z.boolean().default(false),
+  connected: z.boolean().default(false),
+  team_id: z.string().optional(),
+  team_name: z.string().optional(),
+  connected_by: z.string().nullable().optional(),
+  created_at: z.string().optional(),
+}).loose();
+
+export const EMPTY_CLICKUP_INSTALLATION: ClickUpInstallation = {
+  configured: false,
+  connected: false,
+};
+
+export const ClickUpLinkSchema = z.object({
+  id: z.string(),
+  project_id: z.string(),
+  list_id: z.string(),
+  list_name: z.string().default(""),
+  sync_enabled: z.boolean().default(false),
+  last_error: z.string().default(""),
+  created_at: z.string(),
+}).loose();
+
+export const ClickUpLinkListSchema = z.array(ClickUpLinkSchema);
+export const EMPTY_CLICKUP_LINK_LIST: ClickUpLink[] = [];
+
+const ClickUpListEntrySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+}).loose();
+
+export const ClickUpSpaceTreeListSchema = z.array(
+  z.object({
+    space: ClickUpListEntrySchema,
+    folders: z.array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        lists: z.array(ClickUpListEntrySchema).optional(),
+      }).loose(),
+    ).optional(),
+    lists: z.array(ClickUpListEntrySchema).optional(),
+  }).loose(),
+);
+export const EMPTY_CLICKUP_SPACE_TREE: ClickUpSpaceTree[] = [];

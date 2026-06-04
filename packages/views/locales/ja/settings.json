@@ -343,5 +343,36 @@
         "description": "イシューの作成と作業"
       }
     }
+  },
+  "clickup": {
+    "section_title": "ClickUp",
+    "not_configured": "このサーバーでは ClickUp 連携が無効です。MULTICA_CLICKUP_SECRET_KEY を設定して有効化してください。",
+    "connect_hint": "パーソナル API トークンで ClickUp ワークスペースを接続し、タスクのインポートとイシューのプッシュを行います。",
+    "token_placeholder": "パーソナル API トークン（pk_…）",
+    "connect_button": "接続",
+    "connected_toast": "ClickUp を接続しました",
+    "connect_failed_toast": "ClickUp がトークンを拒否しました",
+    "admin_only_hint": "ClickUp を接続できるのはワークスペース管理者のみです。",
+    "connected_as": "接続中の ClickUp ワークスペース",
+    "disconnect_button": "接続解除",
+    "disconnect_confirm_title": "ClickUp の接続を解除しますか？",
+    "disconnect_confirm_description": "すべてのプロジェクトリンクとタスクのペアリングが削除されます。インポート済みのイシューは Multica に残ります。",
+    "disconnect_failed_toast": "接続解除に失敗しました",
+    "links_title": "プロジェクトリンク",
+    "add_link_button": "プロジェクトをリンク",
+    "no_links_hint": "リンクされたプロジェクトはまだありません。Multica プロジェクトを ClickUp リストにリンクすると、タスクのインポートとプッシュができます。",
+    "import_button": "インポート",
+    "importing": "インポート中…",
+    "import_done_toast": "{{created}} 件のタスクをインポートしました（{{skipped}} 件はリンク済み）",
+    "import_failed_toast": "インポートに失敗しました",
+    "picker_title": "プロジェクトを ClickUp リストにリンク",
+    "picker_description": "リストのタスクがプロジェクトにインポートされ、プロジェクトのイシューをリストにプッシュできます。",
+    "picker_project_placeholder": "Multica プロジェクトを選択",
+    "picker_list_placeholder": "ClickUp リストを選択",
+    "picker_loading_lists": "リストを読み込み中…",
+    "picker_submit": "リンクを作成",
+    "link_created_toast": "プロジェクトをリンクしました",
+    "link_failed_toast": "リンクの作成に失敗しました",
+    "cancel": "キャンセル"
   }
 }

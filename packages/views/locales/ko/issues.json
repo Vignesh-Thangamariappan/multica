@@ -457,5 +457,11 @@
     "dont_show_again": "다시 보지 않기",
     "keep_in_backlog": "백로그에 두기",
     "move_to_todo": "할 일로 이동"
+  },
+  "clickup": {
+    "linked_chip": "ClickUp 작업",
+    "push_button": "ClickUp에 생성",
+    "pushed_toast": "ClickUp 작업이 생성되었습니다",
+    "push_failed_toast": "ClickUp 작업 생성 실패"
   }
 }

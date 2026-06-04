@@ -446,5 +446,11 @@
     "dont_show_again": "不再提示",
     "keep_in_backlog": "保持在 Backlog",
     "move_to_todo": "移到 Todo"
+  },
+  "clickup": {
+    "linked_chip": "ClickUp 任务",
+    "push_button": "在 ClickUp 中创建",
+    "pushed_toast": "ClickUp 任务已创建",
+    "push_failed_toast": "ClickUp 任务创建失败"
   }
 }

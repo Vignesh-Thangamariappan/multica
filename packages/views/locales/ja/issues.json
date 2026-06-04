@@ -441,5 +441,11 @@
     "dont_show_again": "今後表示しない",
     "keep_in_backlog": "バックログのままにする",
     "move_to_todo": "未着手に移動"
+  },
+  "clickup": {
+    "linked_chip": "ClickUp タスク",
+    "push_button": "ClickUp に作成",
+    "pushed_toast": "ClickUp タスクを作成しました",
+    "push_failed_toast": "ClickUp タスクの作成に失敗しました"
   }
 }

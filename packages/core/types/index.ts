@@ -59,6 +59,16 @@ export type { Comment, CommentType, CommentAuthorType, Reaction } from "./commen
 export type { Label, CreateLabelRequest, UpdateLabelRequest, ListLabelsResponse, IssueLabelsResponse } from "./label";
 export type { WorkspaceKnowledge, KnowledgeStatus, CreateKnowledgeRequest } from "./knowledge";
 export type {
+  ClickUpInstallation,
+  ClickUpLink,
+  ClickUpList,
+  ClickUpFolder,
+  ClickUpSpaceTree,
+  ClickUpImportSummary,
+  ClickUpTaskLink,
+  CreateClickUpLinkRequest,
+} from "./clickup";
+export type {
   TimelineEntry,
   AssigneeFrequencyEntry,
 } from "./activity";

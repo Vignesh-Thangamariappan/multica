@@ -343,5 +343,36 @@
         "description": "创建并处理 issue"
       }
     }
+  },
+  "clickup": {
+    "section_title": "ClickUp",
+    "not_configured": "此服务器未启用 ClickUp 集成。设置 MULTICA_CLICKUP_SECRET_KEY 以启用。",
+    "connect_hint": "使用个人 API 令牌连接 ClickUp 工作区，以导入任务和推送 issue。",
+    "token_placeholder": "个人 API 令牌（pk_…）",
+    "connect_button": "连接",
+    "connected_toast": "ClickUp 已连接",
+    "connect_failed_toast": "ClickUp 拒绝了该令牌",
+    "admin_only_hint": "仅工作区管理员可以连接 ClickUp。",
+    "connected_as": "已连接的 ClickUp 工作区",
+    "disconnect_button": "断开连接",
+    "disconnect_confirm_title": "断开 ClickUp 连接？",
+    "disconnect_confirm_description": "所有项目链接和任务配对将被移除。已导入的 issue 会保留在 Multica 中。",
+    "disconnect_failed_toast": "断开连接失败",
+    "links_title": "项目链接",
+    "add_link_button": "链接项目",
+    "no_links_hint": "尚未链接任何项目。将 Multica 项目与 ClickUp 列表链接后即可导入和推送任务。",
+    "import_button": "导入",
+    "importing": "导入中…",
+    "import_done_toast": "已导入 {{created}} 个任务（{{skipped}} 个已存在）",
+    "import_failed_toast": "导入失败",
+    "picker_title": "将项目链接到 ClickUp 列表",
+    "picker_description": "任务从列表导入到项目；项目中的 issue 可推送到该列表。",
+    "picker_project_placeholder": "选择 Multica 项目",
+    "picker_list_placeholder": "选择 ClickUp 列表",
+    "picker_loading_lists": "正在加载列表…",
+    "picker_submit": "创建链接",
+    "link_created_toast": "项目已链接",
+    "link_failed_toast": "创建链接失败",
+    "cancel": "取消"
   }
 }

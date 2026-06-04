@@ -379,3 +379,41 @@ describe("listKnowledge", () => {
     });
   });
 });
+
+describe("clickup endpoints", () => {
+  it("getClickUpInstallation falls back to not-configured on null body", async () => {
+    stubFetchJson(null);
+    const client = new ApiClient("https://api.example.test");
+    const inst = await client.getClickUpInstallation();
+    expect(inst).toEqual({ configured: false, connected: false });
+  });
+
+  it("getClickUpInstallation defaults missing booleans", async () => {
+    stubFetchJson({ team_name: "Acme" });
+    const client = new ApiClient("https://api.example.test");
+    const inst = await client.getClickUpInstallation();
+    expect(inst.configured).toBe(false);
+    expect(inst.connected).toBe(false);
+    expect(inst.team_name).toBe("Acme");
+  });
+
+  it("listClickUpLinks falls back to [] when body is not an array", async () => {
+    stubFetchJson({ wrong: "shape" });
+    const client = new ApiClient("https://api.example.test");
+    expect(await client.listClickUpLinks()).toEqual([]);
+  });
+
+  it("listClickUpLinks falls back when an entry misses required fields", async () => {
+    stubFetchJson([{ id: "l-1" }]);
+    const client = new ApiClient("https://api.example.test");
+    expect(await client.listClickUpLinks()).toEqual([]);
+  });
+
+  it("discoverClickUpLists tolerates missing folders/lists arrays", async () => {
+    stubFetchJson([{ space: { id: "s1", name: "Space" } }]);
+    const client = new ApiClient("https://api.example.test");
+    const tree = await client.discoverClickUpLists();
+    expect(tree).toHaveLength(1);
+    expect(tree[0]!.space.name).toBe("Space");
+  });
+});

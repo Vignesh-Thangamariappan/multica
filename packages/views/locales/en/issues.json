@@ -457,5 +457,11 @@
     "dont_show_again": "Don't show this again",
     "keep_in_backlog": "Keep in Backlog",
     "move_to_todo": "Move to Todo"
+  },
+  "clickup": {
+    "linked_chip": "ClickUp task",
+    "push_button": "Create in ClickUp",
+    "pushed_toast": "ClickUp task created",
+    "push_failed_toast": "Failed to create ClickUp task"
   }
 }
