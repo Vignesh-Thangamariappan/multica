@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -57,10 +58,10 @@ func installClickUpForTest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	testHandler.ClickUp = clickup.NewServiceForTest(
-		testHandler.Queries, box, testHandler.IssueService, slog.Default(), srv.URL)
+	testHandler.SetClickUpService(clickup.NewServiceForTest(
+		testHandler.Queries, box, testHandler.IssueService, slog.Default(), srv.URL))
 	t.Cleanup(func() {
-		testHandler.ClickUp = nil
+		testHandler.SetClickUpService(nil)
 		_, _ = testPool.Exec(context.Background(),
 			`DELETE FROM clickup_installation WHERE workspace_id = $1`, testWorkspaceID)
 		_, _ = testPool.Exec(context.Background(),
@@ -234,5 +235,66 @@ func TestClickUpPushCreate(t *testing.T) {
 	testHandler.PushIssueToClickUp(w, withURLParam(newRequest("POST", "/api/issues/"+issueID+"/clickup", nil), "id", issueID))
 	if w.Code != http.StatusConflict {
 		t.Fatalf("re-push: expected 409, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestSetClickUpKeyActivatesIntegration(t *testing.T) {
+	t.Setenv("MULTICA_SECRETS_DIR", t.TempDir())
+	t.Setenv("MULTICA_CLICKUP_SECRET_KEY", "")
+	t.Cleanup(func() { testHandler.SetClickUpService(nil) })
+
+	// Garbage key → 400, stays unconfigured.
+	w := httptest.NewRecorder()
+	testHandler.SetClickUpKey(w, newRequest("PUT", "/api/clickup/secret-key",
+		map[string]string{"secret_key": "not-base64!!"}))
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("bad key: expected 400, got %d: %s", w.Code, w.Body.String())
+	}
+	if testHandler.ClickUpService() != nil {
+		t.Fatal("service must stay nil after invalid key")
+	}
+
+	// Valid 32-byte base64 key → 200, service hot-swapped in, file persisted.
+	raw := make([]byte, secretbox.KeySize)
+	if _, err := rand.Read(raw); err != nil {
+		t.Fatal(err)
+	}
+	b64 := base64.StdEncoding.EncodeToString(raw)
+	w = httptest.NewRecorder()
+	testHandler.SetClickUpKey(w, newRequest("PUT", "/api/clickup/secret-key",
+		map[string]string{"secret_key": b64}))
+	if w.Code != http.StatusOK {
+		t.Fatalf("valid key: expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	if testHandler.ClickUpService() == nil {
+		t.Fatal("service must be live after activation")
+	}
+	if key, err := clickup.ResolveSecretKey(); err != nil || key == nil {
+		t.Fatalf("key not persisted: key=%v err=%v", key, err)
+	}
+
+	// Second activation attempt → 409 (already configured).
+	w = httptest.NewRecorder()
+	testHandler.SetClickUpKey(w, newRequest("PUT", "/api/clickup/secret-key",
+		map[string]string{"secret_key": b64}))
+	if w.Code != http.StatusConflict {
+		t.Fatalf("re-activate: expected 409, got %d", w.Code)
+	}
+}
+
+func TestSetClickUpKeyRefusedWhenEnvManaged(t *testing.T) {
+	t.Setenv("MULTICA_SECRETS_DIR", t.TempDir())
+	t.Setenv("MULTICA_CLICKUP_SECRET_KEY", base64.StdEncoding.EncodeToString(make([]byte, secretbox.KeySize)))
+	t.Cleanup(func() { testHandler.SetClickUpService(nil) })
+
+	raw := make([]byte, secretbox.KeySize)
+	if _, err := rand.Read(raw); err != nil {
+		t.Fatal(err)
+	}
+	w := httptest.NewRecorder()
+	testHandler.SetClickUpKey(w, newRequest("PUT", "/api/clickup/secret-key",
+		map[string]string{"secret_key": base64.StdEncoding.EncodeToString(raw)}))
+	if w.Code != http.StatusConflict {
+		t.Fatalf("env-managed: expected 409, got %d: %s", w.Code, w.Body.String())
 	}
 }

@@ -3,25 +3,39 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/multica-ai/multica/server/internal/integrations/clickup"
+	"github.com/multica-ai/multica/server/internal/util/secretbox"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
 
+// ClickUpService returns the live service, or nil when the integration
+// is not configured. SetClickUpService swaps it in — at boot (router)
+// or at runtime via the admin SetClickUpKey flow.
+func (h *Handler) ClickUpService() *clickup.Service {
+	return h.clickupSvc.Load()
+}
+
+// SetClickUpService installs (or clears) the live ClickUp service.
+func (h *Handler) SetClickUpService(s *clickup.Service) {
+	h.clickupSvc.Store(s)
+}
+
 // requireClickUp gates every ClickUp route on the service being
-// configured (MULTICA_CLICKUP_SECRET_KEY set). Lark precedent: 503 with
-// a clear message instead of 404, so the UI can distinguish "not
-// configured" from "wrong URL".
-func (h *Handler) requireClickUp(w http.ResponseWriter) bool {
-	if h.ClickUp == nil {
+// configured. Lark precedent: 503 with a clear message instead of 404,
+// so the UI can distinguish "not configured" from "wrong URL".
+func (h *Handler) requireClickUp(w http.ResponseWriter) (*clickup.Service, bool) {
+	svc := h.ClickUpService()
+	if svc == nil {
 		writeError(w, http.StatusServiceUnavailable, "clickup integration not configured")
-		return false
+		return nil, false
 	}
-	return true
+	return svc, true
 }
 
 // ClickUpInstallationResponse is the wire shape for the connection card.
@@ -38,7 +52,8 @@ type ClickUpInstallationResponse struct {
 // GetClickUpInstallation (GET /api/clickup/installation) is
 // member-visible so the settings tab renders for non-admins.
 func (h *Handler) GetClickUpInstallation(w http.ResponseWriter, r *http.Request) {
-	if h.ClickUp == nil {
+	svc := h.ClickUpService()
+	if svc == nil {
 		// Not configured is a renderable state for this endpoint, not an
 		// error: the tab shows "integration disabled on this server".
 		writeJSON(w, http.StatusOK, ClickUpInstallationResponse{Configured: false})
@@ -48,7 +63,7 @@ func (h *Handler) GetClickUpInstallation(w http.ResponseWriter, r *http.Request)
 	if !ok {
 		return
 	}
-	inst, err := h.ClickUp.Installation(r.Context(), wsUUID)
+	inst, err := svc.Installation(r.Context(), wsUUID)
 	if err != nil {
 		if errors.Is(err, clickup.ErrNotConnected) {
 			writeJSON(w, http.StatusOK, ClickUpInstallationResponse{Configured: true})
@@ -74,7 +89,8 @@ func (h *Handler) GetClickUpInstallation(w http.ResponseWriter, r *http.Request)
 // ConnectClickUp (POST /api/clickup/installation, admin) validates the
 // personal token against ClickUp and stores it encrypted.
 func (h *Handler) ConnectClickUp(w http.ResponseWriter, r *http.Request) {
-	if !h.requireClickUp(w) {
+	svc, ok := h.requireClickUp(w)
+	if !ok {
 		return
 	}
 	wsUUID, ok := parseUUIDOrBadRequest(w, workspaceIDFromURL(r, "id"), "workspace_id")
@@ -103,7 +119,7 @@ func (h *Handler) ConnectClickUp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	inst, err := h.ClickUp.Connect(r.Context(), wsUUID, userUUID, req.APIToken)
+	inst, err := svc.Connect(r.Context(), wsUUID, userUUID, req.APIToken)
 	if err != nil {
 		if errors.Is(err, clickup.ErrTokenInvalid) {
 			writeError(w, http.StatusBadRequest, "clickup rejected the token")
@@ -123,14 +139,15 @@ func (h *Handler) ConnectClickUp(w http.ResponseWriter, r *http.Request) {
 
 // DisconnectClickUp (DELETE /api/clickup/installation, admin).
 func (h *Handler) DisconnectClickUp(w http.ResponseWriter, r *http.Request) {
-	if !h.requireClickUp(w) {
+	svc, ok := h.requireClickUp(w)
+	if !ok {
 		return
 	}
 	wsUUID, ok := parseUUIDOrBadRequest(w, workspaceIDFromURL(r, "id"), "workspace_id")
 	if !ok {
 		return
 	}
-	removed, err := h.ClickUp.Disconnect(r.Context(), wsUUID)
+	removed, err := svc.Disconnect(r.Context(), wsUUID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to disconnect clickup")
 		return
@@ -145,14 +162,15 @@ func (h *Handler) DisconnectClickUp(w http.ResponseWriter, r *http.Request) {
 // DiscoverClickUpLists (GET /api/clickup/spaces, admin) returns the
 // space → folder → list tree for the link picker.
 func (h *Handler) DiscoverClickUpLists(w http.ResponseWriter, r *http.Request) {
-	if !h.requireClickUp(w) {
+	svc, ok := h.requireClickUp(w)
+	if !ok {
 		return
 	}
 	wsUUID, ok := parseUUIDOrBadRequest(w, workspaceIDFromURL(r, "id"), "workspace_id")
 	if !ok {
 		return
 	}
-	tree, err := h.ClickUp.DiscoverLists(r.Context(), wsUUID)
+	tree, err := svc.DiscoverLists(r.Context(), wsUUID)
 	if err != nil {
 		if errors.Is(err, clickup.ErrNotConnected) {
 			writeError(w, http.StatusNotFound, "clickup not connected")
@@ -189,7 +207,8 @@ func clickupLinkToResponse(l db.ClickupListLink) ClickUpLinkResponse {
 
 // ListClickUpLinks (GET /api/clickup/links) is member-visible.
 func (h *Handler) ListClickUpLinks(w http.ResponseWriter, r *http.Request) {
-	if !h.requireClickUp(w) {
+	_, ok := h.requireClickUp(w)
+	if !ok {
 		return
 	}
 	wsUUID, ok := parseUUIDOrBadRequest(w, workspaceIDFromURL(r, "id"), "workspace_id")
@@ -211,7 +230,8 @@ func (h *Handler) ListClickUpLinks(w http.ResponseWriter, r *http.Request) {
 // CreateClickUpLink (POST /api/clickup/links, admin) links a project to
 // a list and seeds the status map.
 func (h *Handler) CreateClickUpLink(w http.ResponseWriter, r *http.Request) {
-	if !h.requireClickUp(w) {
+	svc, ok := h.requireClickUp(w)
+	if !ok {
 		return
 	}
 	wsUUID, ok := parseUUIDOrBadRequest(w, workspaceIDFromURL(r, "id"), "workspace_id")
@@ -244,7 +264,7 @@ func (h *Handler) CreateClickUpLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	link, err := h.ClickUp.CreateLink(r.Context(), wsUUID, projectUUID, req.ListID, req.ListName)
+	link, err := svc.CreateLink(r.Context(), wsUUID, projectUUID, req.ListID, req.ListName)
 	if err != nil {
 		if errors.Is(err, clickup.ErrNotConnected) {
 			writeError(w, http.StatusNotFound, "clickup not connected")
@@ -262,7 +282,8 @@ func (h *Handler) CreateClickUpLink(w http.ResponseWriter, r *http.Request) {
 
 // DeleteClickUpLink (DELETE /api/clickup/links/{linkId}, admin).
 func (h *Handler) DeleteClickUpLink(w http.ResponseWriter, r *http.Request) {
-	if !h.requireClickUp(w) {
+	_, ok := h.requireClickUp(w)
+	if !ok {
 		return
 	}
 	wsUUID, ok := parseUUIDOrBadRequest(w, workspaceIDFromURL(r, "id"), "workspace_id")
@@ -293,7 +314,8 @@ func (h *Handler) DeleteClickUpLink(w http.ResponseWriter, r *http.Request) {
 // client's rate limiter; large boards take a while — the frontend shows
 // a progress toast and this handler simply blocks (Phase 1 simplicity).
 func (h *Handler) ImportClickUpList(w http.ResponseWriter, r *http.Request) {
-	if !h.requireClickUp(w) {
+	svc, ok := h.requireClickUp(w)
+	if !ok {
 		return
 	}
 	wsUUID, ok := parseUUIDOrBadRequest(w, workspaceIDFromURL(r, "id"), "workspace_id")
@@ -329,7 +351,7 @@ func (h *Handler) ImportClickUpList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	summary, err := h.ClickUp.ImportList(r.Context(), link, userUUID, req.IncludeClosed)
+	summary, err := svc.ImportList(r.Context(), link, userUUID, req.IncludeClosed)
 	if err != nil {
 		writeError(w, http.StatusBadGateway, "clickup import failed")
 		return
@@ -341,7 +363,8 @@ func (h *Handler) ImportClickUpList(w http.ResponseWriter, r *http.Request) {
 // ClickUp task from this issue in its project's linked list. Member-level
 // on purpose: agents push through this route via the CLI.
 func (h *Handler) PushIssueToClickUp(w http.ResponseWriter, r *http.Request) {
-	if !h.requireClickUp(w) {
+	svc, ok := h.requireClickUp(w)
+	if !ok {
 		return
 	}
 	issue, ok := h.loadIssueForUser(w, r, chi.URLParam(r, "id"))
@@ -354,7 +377,7 @@ func (h *Handler) PushIssueToClickUp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	link, err := h.ClickUp.PushCreate(r.Context(), issue.WorkspaceID, issue, "member", userUUID)
+	link, err := svc.PushCreate(r.Context(), issue.WorkspaceID, issue, "member", userUUID)
 	if err != nil {
 		switch {
 		case errors.Is(err, clickup.ErrAlreadyLinked):
@@ -377,7 +400,8 @@ func (h *Handler) PushIssueToClickUp(w http.ResponseWriter, r *http.Request) {
 // GetIssueClickUpLink (GET /api/issues/{id}/clickup, member) returns the
 // task link for an issue, or 404.
 func (h *Handler) GetIssueClickUpLink(w http.ResponseWriter, r *http.Request) {
-	if !h.requireClickUp(w) {
+	_, ok := h.requireClickUp(w)
+	if !ok {
 		return
 	}
 	issue, ok := h.loadIssueForUser(w, r, chi.URLParam(r, "id"))
@@ -393,4 +417,46 @@ func (h *Handler) GetIssueClickUpLink(w http.ResponseWriter, r *http.Request) {
 		"task_id":  link.TaskID,
 		"task_url": link.TaskUrl,
 	})
+}
+
+// SetClickUpKey (PUT /api/clickup/secret-key, admin) activates the
+// integration at runtime: validates the base64 32-byte key, persists it
+// to the secrets dir, and hot-swaps a live Service in — no restart.
+// Refused when the key is operator-managed via env (the file would
+// silently lose to env on next boot) or when already configured (a key
+// swap would orphan the encrypted token).
+func (h *Handler) SetClickUpKey(w http.ResponseWriter, r *http.Request) {
+	if h.ClickUpService() != nil {
+		writeError(w, http.StatusConflict, "clickup integration already configured")
+		return
+	}
+
+	var req struct {
+		SecretKey string `json:"secret_key"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	key, err := clickup.SaveSecretKey(req.SecretKey)
+	if err != nil {
+		switch {
+		case errors.Is(err, clickup.ErrInvalidSecretKey):
+			writeError(w, http.StatusBadRequest, "secret_key must be base64-encoded 32 bytes (openssl rand -base64 32)")
+		case errors.Is(err, clickup.ErrKeyFromEnv):
+			writeError(w, http.StatusConflict, "secret key is managed via MULTICA_CLICKUP_SECRET_KEY")
+		default:
+			writeError(w, http.StatusInternalServerError, "failed to persist secret key")
+		}
+		return
+	}
+
+	box, err := secretbox.New(key)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to initialize encryption")
+		return
+	}
+	h.SetClickUpService(clickup.NewService(h.Queries, box, h.IssueService, slog.Default()))
+	writeJSON(w, http.StatusOK, ClickUpInstallationResponse{Configured: true})
 }

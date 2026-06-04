@@ -190,11 +190,13 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 	// key is absent the ClickUp handlers return 503 / configured:false
 	// and the rest of the server is unaffected — same opt-in contract
 	// as Lark. Design: docs/clickup-integration-rfc.md.
-	if cuKey, err := secretbox.LoadKey("MULTICA_CLICKUP_SECRET_KEY"); err == nil {
+	if cuKey, err := clickup.ResolveSecretKey(); err != nil {
+		slog.Error("clickup: secret key invalid; clickup integration disabled", "error", err)
+	} else if cuKey != nil {
 		if cuBox, err := secretbox.New(cuKey); err != nil {
 			slog.Error("clickup: secretbox.New failed; clickup integration disabled", "error", err)
 		} else {
-			h.ClickUp = clickup.NewService(queries, cuBox, h.IssueService, slog.Default())
+			h.SetClickUpService(clickup.NewService(queries, cuBox, h.IssueService, slog.Default()))
 			slog.Info("clickup integration enabled")
 		}
 	}
@@ -946,6 +948,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 				r.Get("/installation", h.GetClickUpInstallation)
 				r.Get("/links", h.ListClickUpLinks)
 				adminOnly := middleware.RequireWorkspaceRole(queries, "owner", "admin")
+				r.With(adminOnly).Put("/secret-key", h.SetClickUpKey)
 				r.With(adminOnly).Post("/installation", h.ConnectClickUp)
 				r.With(adminOnly).Delete("/installation", h.DisconnectClickUp)
 				r.With(adminOnly).Get("/spaces", h.DiscoverClickUpLists)

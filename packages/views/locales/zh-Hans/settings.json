@@ -373,6 +373,12 @@
     "picker_submit": "创建链接",
     "link_created_toast": "项目已链接",
     "link_failed_toast": "创建链接失败",
-    "cancel": "取消"
+    "cancel": "取消",
+    "activate_hint": "设置加密密钥以启用 ClickUp 集成。密钥用于在静态时保护 API 令牌，并存储在服务器上——之后无需再次输入。",
+    "activate_placeholder": "粘贴 base64 密钥（32 字节）",
+    "activate_button": "启用",
+    "activated_toast": "ClickUp 集成已启用",
+    "activate_failed_toast": "启用失败——密钥必须是 base64 编码的 32 字节",
+    "activate_generate_hint": "生成方式：openssl rand -base64 32"
   }
 }

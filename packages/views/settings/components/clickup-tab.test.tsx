@@ -37,6 +37,7 @@ vi.mock("@multica/core/projects/queries", () => ({
 }));
 
 vi.mock("@multica/core/clickup", () => ({
+  useSetClickUpKey: () => ({ mutate: vi.fn(), isPending: false }),
   clickupInstallationOptions: () => ({ queryKey: ["clickup-installation"] }),
   clickupLinksOptions: () => ({ queryKey: ["clickup-links"] }),
   clickupSpacesOptions: () => ({ queryKey: ["clickup-spaces"] }),
@@ -77,9 +78,17 @@ beforeEach(() => {
 });
 
 describe("ClickUpTab", () => {
-  it("shows the server-disabled hint when not configured", () => {
+  it("shows the activation key field for admins when not configured", () => {
+    renderTab();
+    expect(screen.getByPlaceholderText(/base64 key/i)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /activate/i })).toBeTruthy();
+  });
+
+  it("shows the server-disabled hint for non-admins when not configured", () => {
+    membersRef.current = [{ user_id: "user-1", role: "member" }];
     renderTab();
     expect(screen.getByText(/disabled on this server/i)).toBeTruthy();
+    expect(screen.queryByPlaceholderText(/base64 key/i)).toBeNull();
   });
 
   it("shows the token connect form for admins when configured but not connected", () => {

@@ -1863,6 +1863,13 @@ export class ApiClient {
     });
   }
 
+  async setClickUpSecretKey(secretKey: string): Promise<void> {
+    await this.fetch(`/api/clickup/secret-key`, {
+      method: "PUT",
+      body: JSON.stringify({ secret_key: secretKey }),
+    });
+  }
+
   async disconnectClickUp(): Promise<void> {
     await this.fetch(`/api/clickup/installation`, { method: "DELETE" });
   }

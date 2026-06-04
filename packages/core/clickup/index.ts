@@ -6,6 +6,7 @@ export {
   issueClickUpLinkOptions,
 } from "./queries";
 export {
+  useSetClickUpKey,
   useConnectClickUp,
   useDisconnectClickUp,
   useCreateClickUpLink,

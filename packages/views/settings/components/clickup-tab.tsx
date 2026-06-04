@@ -40,6 +40,7 @@ import {
   clickupInstallationOptions,
   clickupLinksOptions,
   clickupSpacesOptions,
+  useSetClickUpKey,
   useConnectClickUp,
   useCreateClickUpLink,
   useDeleteClickUpLink,
@@ -78,13 +79,11 @@ export function ClickUpTab() {
 
   if (isLoading) return null;
 
-  // Server has no MULTICA_CLICKUP_SECRET_KEY — render the disabled hint.
+  // No encryption key on the server yet. Admins can activate the
+  // integration right here: the key is validated, persisted server-side,
+  // and the service is hot-swapped in — no .env edit, no restart.
   if (installation?.configured !== true) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        {t(($) => $.clickup.not_configured)}
-      </p>
-    );
+    return <ActivateCard canManage={canManage} />;
   }
 
   if (!connected) {
@@ -199,6 +198,57 @@ export function ClickUpTab() {
 
       {pickerOpen && <LinkPickerDialog onClose={() => setPickerOpen(false)} />}
     </div>
+  );
+}
+
+function ActivateCard({ canManage }: { canManage: boolean }) {
+  const { t } = useT("settings");
+  const [secretKey, setSecretKey] = useState("");
+  const setKey = useSetClickUpKey();
+
+  if (!canManage) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        {t(($) => $.clickup.not_configured)}
+      </p>
+    );
+  }
+
+  return (
+    <Card>
+      <CardContent className="flex flex-col gap-3 p-4">
+        <p className="text-sm text-muted-foreground">
+          {t(($) => $.clickup.activate_hint)}
+        </p>
+        <div className="flex gap-2">
+          <Input
+            type="password"
+            value={secretKey}
+            onChange={(e) => setSecretKey(e.target.value)}
+            placeholder={t(($) => $.clickup.activate_placeholder)}
+            className="max-w-sm font-mono"
+          />
+          <Button
+            size="sm"
+            disabled={secretKey.trim() === "" || setKey.isPending}
+            onClick={() =>
+              setKey.mutate(secretKey.trim(), {
+                onSuccess: () => {
+                  setSecretKey("");
+                  toast.success(t(($) => $.clickup.activated_toast));
+                },
+                onError: () => toast.error(t(($) => $.clickup.activate_failed_toast)),
+              })
+            }
+          >
+            {t(($) => $.clickup.activate_button)}
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {t(($) => $.clickup.activate_generate_hint)}
+        </p>
+      </CardContent>
+    </Card>
   );
 }
 

@@ -20,6 +20,8 @@ import (
 	"github.com/multica-ai/multica/server/internal/cloudruntime"
 	"github.com/multica-ai/multica/server/internal/daemonws"
 	"github.com/multica-ai/multica/server/internal/events"
+	"sync/atomic"
+
 	"github.com/multica-ai/multica/server/internal/integrations/clickup"
 	"github.com/multica-ai/multica/server/internal/integrations/lark"
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
@@ -126,10 +128,12 @@ type Handler struct {
 	// handlers return 503 in that case so a misconfigured self-host
 	// deployment surfaces a clear error instead of silently using a
 	// zero key. Wired in cmd/server/router.go after handler.New.
-	// ClickUp integration (Phase 1: import & push-create). Nil when
-	// MULTICA_CLICKUP_SECRET_KEY is unset — handlers return 503 /
-	// configured:false (docs/clickup-integration-rfc.md).
-	ClickUp           *clickup.Service
+	// clickupSvc holds the ClickUp integration service (Phase 1: import
+	// & push-create). Nil when no secret key is configured — handlers
+	// return 503 / configured:false. Atomic because the admin "activate
+	// from the UI" flow (SetClickUpKey) swaps it in at runtime while
+	// other requests read it (docs/clickup-integration-rfc.md).
+	clickupSvc        atomic.Pointer[clickup.Service]
 	LarkInstallations *lark.InstallationService
 	LarkBindingTokens *lark.BindingTokenService
 	// LarkRegistration owns the device-flow install lifecycle: begin

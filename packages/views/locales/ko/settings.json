@@ -373,6 +373,12 @@
     "picker_submit": "링크 생성",
     "link_created_toast": "프로젝트가 링크되었습니다",
     "link_failed_toast": "링크 생성 실패",
-    "cancel": "취소"
+    "cancel": "취소",
+    "activate_hint": "암호화 키를 설정하여 ClickUp 통합을 활성화하세요. 이 키는 API 토큰을 보호하며 서버에 저장됩니다 — 다시 입력할 필요가 없습니다.",
+    "activate_placeholder": "base64 키 붙여넣기 (32바이트)",
+    "activate_button": "활성화",
+    "activated_toast": "ClickUp 통합이 활성화되었습니다",
+    "activate_failed_toast": "활성화 실패 — 키는 base64로 인코딩된 32바이트여야 합니다",
+    "activate_generate_hint": "생성 방법: openssl rand -base64 32"
   }
 }

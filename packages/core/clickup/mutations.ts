@@ -4,6 +4,17 @@ import { clickupKeys } from "./queries";
 import { useWorkspaceId } from "../hooks";
 import type { CreateClickUpLinkRequest } from "../types";
 
+export function useSetClickUpKey() {
+  const qc = useQueryClient();
+  const wsId = useWorkspaceId();
+  return useMutation({
+    mutationFn: (secretKey: string) => api.setClickUpSecretKey(secretKey),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: clickupKeys.all(wsId) });
+    },
+  });
+}
+
 export function useConnectClickUp() {
   const qc = useQueryClient();
   const wsId = useWorkspaceId();
