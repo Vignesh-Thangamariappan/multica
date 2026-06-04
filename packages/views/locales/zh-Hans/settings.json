@@ -378,7 +378,7 @@
     "activate_placeholder": "粘贴 base64 密钥（32 字节）",
     "activate_button": "启用",
     "activated_toast": "ClickUp 集成已启用",
-    "activate_failed_toast": "启用失败——密钥必须是 base64 编码的 32 字节",
+    "activate_failed_toast": "启用失败",
     "activate_generate_hint": "生成方式：openssl rand -base64 32"
   }
 }

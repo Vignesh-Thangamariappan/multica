@@ -48,6 +48,7 @@ import {
   useImportClickUpList,
 } from "@multica/core/clickup";
 import type { ClickUpLink, ClickUpList } from "@multica/core/types";
+import { ApiError } from "@multica/core/api";
 import { useT } from "../../i18n";
 
 // ClickUpTab is the workspace settings panel for the ClickUp integration
@@ -201,6 +202,17 @@ export function ClickUpTab() {
   );
 }
 
+// serverErrorMessage extracts the backend's human-readable error so
+// toasts report the actual failure (404 from a stale backend, 409 for
+// env-managed keys) instead of guessing at a cause.
+function serverErrorMessage(err: unknown): string | null {
+  if (err instanceof ApiError && err.body && typeof err.body === "object") {
+    const msg = (err.body as Record<string, unknown>).error;
+    if (typeof msg === "string" && msg !== "") return msg;
+  }
+  return null;
+}
+
 function ActivateCard({ canManage }: { canManage: boolean }) {
   const { t } = useT("settings");
   const [secretKey, setSecretKey] = useState("");
@@ -237,7 +249,10 @@ function ActivateCard({ canManage }: { canManage: boolean }) {
                   setSecretKey("");
                   toast.success(t(($) => $.clickup.activated_toast));
                 },
-                onError: () => toast.error(t(($) => $.clickup.activate_failed_toast)),
+                onError: (err) =>
+                  toast.error(
+                    serverErrorMessage(err) ?? t(($) => $.clickup.activate_failed_toast),
+                  ),
               })
             }
           >

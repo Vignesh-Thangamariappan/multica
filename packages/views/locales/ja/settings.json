@@ -378,7 +378,7 @@
     "activate_placeholder": "base64 キーを貼り付け（32 バイト）",
     "activate_button": "有効化",
     "activated_toast": "ClickUp 連携を有効化しました",
-    "activate_failed_toast": "有効化に失敗しました。キーは base64 エンコードされた 32 バイトである必要があります",
+    "activate_failed_toast": "有効化に失敗しました",
     "activate_generate_hint": "生成方法: openssl rand -base64 32"
   }
 }

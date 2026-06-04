@@ -378,7 +378,7 @@
     "activate_placeholder": "base64 키 붙여넣기 (32바이트)",
     "activate_button": "활성화",
     "activated_toast": "ClickUp 통합이 활성화되었습니다",
-    "activate_failed_toast": "활성화 실패 — 키는 base64로 인코딩된 32바이트여야 합니다",
+    "activate_failed_toast": "활성화 실패",
     "activate_generate_hint": "생성 방법: openssl rand -base64 32"
   }
 }

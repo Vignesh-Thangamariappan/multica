@@ -378,7 +378,7 @@
     "activate_placeholder": "Paste a base64 key (32 bytes)",
     "activate_button": "Activate",
     "activated_toast": "ClickUp integration activated",
-    "activate_failed_toast": "Activation failed — key must be base64-encoded 32 bytes",
+    "activate_failed_toast": "Activation failed",
     "activate_generate_hint": "Generate one with: openssl rand -base64 32"
   }
 }
