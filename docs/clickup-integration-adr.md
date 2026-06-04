@@ -1,6 +1,6 @@
 # ADR: ClickUp Integration — Issue Import & Sync
 
-> Status: Proposed
+> Status: Accepted (2026-06-04) — Phase 1 in progress; assignee handling dropped from all phases per review
 > Date: 2026-06-04
 > Decision owners: Vignesh
 > Companion design: [clickup-integration-rfc.md](./clickup-integration-rfc.md)

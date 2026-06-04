@@ -22,6 +22,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/daemonws"
 	"github.com/multica-ai/multica/server/internal/events"
 	"github.com/multica-ai/multica/server/internal/handler"
+	"github.com/multica-ai/multica/server/internal/integrations/clickup"
 	"github.com/multica-ai/multica/server/internal/integrations/lark"
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
 	"github.com/multica-ai/multica/server/internal/middleware"
@@ -184,6 +185,20 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 	// handlers return 503 with a clear message; the rest of the server
 	// continues to start so self-host deployments that have not opted
 	// in to Lark are unaffected.
+	// ClickUp integration. Only wired when MULTICA_CLICKUP_SECRET_KEY is
+	// set (at-rest encryption key for the personal API token). When the
+	// key is absent the ClickUp handlers return 503 / configured:false
+	// and the rest of the server is unaffected — same opt-in contract
+	// as Lark. Design: docs/clickup-integration-rfc.md.
+	if cuKey, err := secretbox.LoadKey("MULTICA_CLICKUP_SECRET_KEY"); err == nil {
+		if cuBox, err := secretbox.New(cuKey); err != nil {
+			slog.Error("clickup: secretbox.New failed; clickup integration disabled", "error", err)
+		} else {
+			h.ClickUp = clickup.NewService(queries, cuBox, h.IssueService, slog.Default())
+			slog.Info("clickup integration enabled")
+		}
+	}
+
 	if larkKey, err := secretbox.LoadKey("MULTICA_LARK_SECRET_KEY"); err == nil {
 		box, err := secretbox.New(larkKey)
 		if err != nil {
@@ -921,6 +936,22 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 			r.Route("/api/notification-preferences", func(r chi.Router) {
 				r.Get("/", h.GetNotificationPreferences)
 				r.Put("/", h.UpdateNotificationPreferences)
+			})
+
+			// ClickUp integration (Phase 1). Reads are member-visible so
+			// the settings tab renders for non-admins; management +
+			// import are admin-only. Push-create on an issue is
+			// member-level on purpose — agents push via the CLI.
+			r.Route("/api/clickup", func(r chi.Router) {
+				r.Get("/installation", h.GetClickUpInstallation)
+				r.Get("/links", h.ListClickUpLinks)
+				adminOnly := middleware.RequireWorkspaceRole(queries, "owner", "admin")
+				r.With(adminOnly).Post("/installation", h.ConnectClickUp)
+				r.With(adminOnly).Delete("/installation", h.DisconnectClickUp)
+				r.With(adminOnly).Get("/spaces", h.DiscoverClickUpLists)
+				r.With(adminOnly).Post("/links", h.CreateClickUpLink)
+				r.With(adminOnly).Delete("/links/{linkId}", h.DeleteClickUpLink)
+				r.With(adminOnly).Post("/links/{linkId}/import", h.ImportClickUpList)
 			})
 
 			// Workspace Knowledge

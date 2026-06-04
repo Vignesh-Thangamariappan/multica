@@ -194,6 +194,60 @@ type ChatSession struct {
 	RuntimeID   pgtype.UUID        `json:"runtime_id"`
 }
 
+type ClickupInstallation struct {
+	ID                pgtype.UUID        `json:"id"`
+	WorkspaceID       pgtype.UUID        `json:"workspace_id"`
+	TeamID            string             `json:"team_id"`
+	TeamName          string             `json:"team_name"`
+	ApiTokenEncrypted []byte             `json:"api_token_encrypted"`
+	ConnectedBy       pgtype.UUID        `json:"connected_by"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+}
+
+type ClickupListLink struct {
+	ID             pgtype.UUID        `json:"id"`
+	InstallationID pgtype.UUID        `json:"installation_id"`
+	WorkspaceID    pgtype.UUID        `json:"workspace_id"`
+	ProjectID      pgtype.UUID        `json:"project_id"`
+	ListID         string             `json:"list_id"`
+	ListName       string             `json:"list_name"`
+	SyncEnabled    bool               `json:"sync_enabled"`
+	SyncCursorMs   int64              `json:"sync_cursor_ms"`
+	LastPolledAt   pgtype.Timestamptz `json:"last_polled_at"`
+	LastError      string             `json:"last_error"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
+type ClickupStatusMap struct {
+	LinkID        pgtype.UUID `json:"link_id"`
+	ClickupStatus string      `json:"clickup_status"`
+	MulticaStatus string      `json:"multica_status"`
+}
+
+type ClickupSyncAudit struct {
+	ID        pgtype.UUID        `json:"id"`
+	LinkID    pgtype.UUID        `json:"link_id"`
+	Direction string             `json:"direction"`
+	TaskID    string             `json:"task_id"`
+	IssueID   pgtype.UUID        `json:"issue_id"`
+	Action    string             `json:"action"`
+	Detail    string             `json:"detail"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+type ClickupTaskLink struct {
+	IssueID         pgtype.UUID        `json:"issue_id"`
+	LinkID          pgtype.UUID        `json:"link_id"`
+	TaskID          string             `json:"task_id"`
+	TaskUrl         string             `json:"task_url"`
+	OutboundFenceMs int64              `json:"outbound_fence_ms"`
+	LastSyncedMs    int64              `json:"last_synced_ms"`
+	CreatedByType   string             `json:"created_by_type"`
+	CreatedByID     pgtype.UUID        `json:"created_by_id"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+}
+
 type Comment struct {
 	ID             pgtype.UUID        `json:"id"`
 	IssueID        pgtype.UUID        `json:"issue_id"`
@@ -453,7 +507,6 @@ type LarkInstallation struct {
 	AppSecretEncrypted []byte             `json:"app_secret_encrypted"`
 	TenantKey          pgtype.Text        `json:"tenant_key"`
 	BotOpenID          string             `json:"bot_open_id"`
-	BotUnionID         pgtype.Text        `json:"bot_union_id"`
 	InstallerUserID    pgtype.UUID        `json:"installer_user_id"`
 	Status             string             `json:"status"`
 	WsLeaseToken       pgtype.Text        `json:"ws_lease_token"`
@@ -461,6 +514,7 @@ type LarkInstallation struct {
 	InstalledAt        pgtype.Timestamptz `json:"installed_at"`
 	CreatedAt          pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	BotUnionID         pgtype.Text        `json:"bot_union_id"`
 }
 
 type LarkOutboundCardMessage struct {
@@ -666,17 +720,6 @@ type TaskUsageHourlyRollupState struct {
 	LastError         pgtype.Text        `json:"last_error"`
 }
 
-type WorkspaceKnowledge struct {
-	ID           pgtype.UUID        `json:"id"`
-	WorkspaceID  pgtype.UUID        `json:"workspace_id"`
-	AgentID      pgtype.UUID        `json:"agent_id"`
-	Content      string             `json:"content"`
-	SourceTaskID pgtype.UUID        `json:"source_task_id"`
-	// status: "active" | "pending" | "rejected"
-	Status    string             `json:"status"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-}
-
 type User struct {
 	ID                      pgtype.UUID        `json:"id"`
 	Name                    string             `json:"name"`
@@ -756,4 +799,14 @@ type WorkspaceInvitation struct {
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
 	ExpiresAt     pgtype.Timestamptz `json:"expires_at"`
+}
+
+type WorkspaceKnowledge struct {
+	ID           pgtype.UUID        `json:"id"`
+	WorkspaceID  pgtype.UUID        `json:"workspace_id"`
+	AgentID      pgtype.UUID        `json:"agent_id"`
+	Content      string             `json:"content"`
+	SourceTaskID pgtype.UUID        `json:"source_task_id"`
+	Status       string             `json:"status"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 }

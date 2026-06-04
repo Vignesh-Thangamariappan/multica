@@ -1,6 +1,6 @@
 # RFC: ClickUp Integration — Design
 
-> Status: Proposed
+> Status: Accepted (2026-06-04) — Phase 1 in progress; assignee handling dropped from all phases per review
 > Last updated: 2026-06-04
 > Decision record: [clickup-integration-adr.md](./clickup-integration-adr.md)
 
