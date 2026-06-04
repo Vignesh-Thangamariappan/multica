@@ -379,6 +379,11 @@
     "activate_button": "Activate",
     "activated_toast": "ClickUp integration activated",
     "activate_failed_toast": "Activation failed",
-    "activate_generate_hint": "Generate one with: openssl rand -base64 32"
+    "activate_generate_hint": "Generate one with: openssl rand -base64 32",
+    "import_dialog_title": "Import tasks from ClickUp",
+    "import_dialog_description": "Pick the tasks to bring in as issues. Done and closed tasks are unchecked by default; already-imported tasks are locked.",
+    "import_dialog_loading": "Loading tasks from ClickUp…",
+    "import_dialog_empty": "No tasks found in this list.",
+    "import_selected_button": "Import {{count}} tasks"
   }
 }

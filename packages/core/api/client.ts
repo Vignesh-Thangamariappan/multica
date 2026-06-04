@@ -84,6 +84,7 @@ import type {
   ClickUpLink,
   ClickUpSpaceTree,
   ClickUpImportSummary,
+  ClickUpTaskPreview,
   ClickUpTaskLink,
   CreateClickUpLinkRequest,
   PinnedItem,
@@ -145,6 +146,7 @@ import {
   ClickUpInstallationSchema,
   ClickUpLinkListSchema,
   ClickUpSpaceTreeListSchema,
+  ClickUpTaskPreviewListSchema,
   CloudRuntimeNodeListSchema,
   CloudRuntimeNodeSchema,
   CreateAgentFromTemplateResponseSchema,
@@ -163,6 +165,7 @@ import {
   EMPTY_CLICKUP_INSTALLATION,
   EMPTY_CLICKUP_LINK_LIST,
   EMPTY_CLICKUP_SPACE_TREE,
+  EMPTY_CLICKUP_TASK_PREVIEWS,
   EMPTY_KNOWLEDGE_LIST,
   EMPTY_LIST_ISSUES_RESPONSE,
   EMPTY_SQUAD,
@@ -1899,10 +1902,23 @@ export class ApiClient {
     await this.fetch(`/api/clickup/links/${id}`, { method: "DELETE" });
   }
 
-  async importClickUpList(id: string, includeClosed: boolean): Promise<ClickUpImportSummary> {
+  async previewClickUpImport(id: string, includeClosed: boolean): Promise<ClickUpTaskPreview[]> {
+    const raw = await this.fetch<unknown>(
+      `/api/clickup/links/${id}/preview?include_closed=${includeClosed}`,
+    );
+    return parseWithFallback(raw, ClickUpTaskPreviewListSchema, EMPTY_CLICKUP_TASK_PREVIEWS, {
+      endpoint: "GET /api/clickup/links/{id}/preview",
+    });
+  }
+
+  async importClickUpList(
+    id: string,
+    includeClosed: boolean,
+    taskIds?: string[],
+  ): Promise<ClickUpImportSummary> {
     return this.fetch(`/api/clickup/links/${id}/import`, {
       method: "POST",
-      body: JSON.stringify({ include_closed: includeClosed }),
+      body: JSON.stringify({ include_closed: includeClosed, task_ids: taskIds ?? [] }),
     });
   }
 

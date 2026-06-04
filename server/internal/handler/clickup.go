@@ -336,7 +336,8 @@ func (h *Handler) ImportClickUpList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		IncludeClosed bool `json:"include_closed"`
+		IncludeClosed bool     `json:"include_closed"`
+		TaskIDs       []string `json:"task_ids"`
 	}
 	if r.Body != nil {
 		_ = json.NewDecoder(r.Body).Decode(&req) // empty body = defaults
@@ -351,7 +352,7 @@ func (h *Handler) ImportClickUpList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	summary, err := svc.ImportList(r.Context(), link, userUUID, req.IncludeClosed)
+	summary, err := svc.ImportList(r.Context(), link, userUUID, req.IncludeClosed, req.TaskIDs)
 	if err != nil {
 		writeError(w, http.StatusBadGateway, "clickup import failed")
 		return
@@ -459,4 +460,38 @@ func (h *Handler) SetClickUpKey(w http.ResponseWriter, r *http.Request) {
 	}
 	h.SetClickUpService(clickup.NewService(h.Queries, box, h.IssueService, slog.Default()))
 	writeJSON(w, http.StatusOK, ClickUpInstallationResponse{Configured: true})
+}
+
+// PreviewClickUpImport (GET /api/clickup/links/{linkId}/preview, admin)
+// returns the linked list's tasks (name + status + already-imported flag)
+// so the import dialog can offer per-task selection instead of a blind
+// bulk import.
+func (h *Handler) PreviewClickUpImport(w http.ResponseWriter, r *http.Request) {
+	svc, ok := h.requireClickUp(w)
+	if !ok {
+		return
+	}
+	wsUUID, ok := parseUUIDOrBadRequest(w, workspaceIDFromURL(r, "id"), "workspace_id")
+	if !ok {
+		return
+	}
+	linkUUID, ok := parseUUIDOrBadRequest(w, chi.URLParam(r, "linkId"), "link_id")
+	if !ok {
+		return
+	}
+	link, err := h.Queries.GetClickUpListLinkInWorkspace(r.Context(), db.GetClickUpListLinkInWorkspaceParams{
+		ID:          linkUUID,
+		WorkspaceID: wsUUID,
+	})
+	if err != nil {
+		writeError(w, http.StatusNotFound, "clickup link not found")
+		return
+	}
+	includeClosed := r.URL.Query().Get("include_closed") == "true"
+	previews, err := svc.PreviewList(r.Context(), link, includeClosed)
+	if err != nil {
+		writeError(w, http.StatusBadGateway, "failed to fetch clickup tasks")
+		return
+	}
+	writeJSON(w, http.StatusOK, previews)
 }

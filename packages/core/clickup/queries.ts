@@ -35,6 +35,20 @@ export function clickupSpacesOptions(wsId: string, enabled: boolean) {
   });
 }
 
+export function clickupImportPreviewOptions(
+  wsId: string,
+  linkId: string,
+  includeClosed: boolean,
+  enabled: boolean,
+) {
+  return queryOptions({
+    queryKey: [...clickupKeys.all(wsId), "preview", linkId, includeClosed] as const,
+    queryFn: () => api.previewClickUpImport(linkId, includeClosed),
+    enabled: Boolean(wsId) && Boolean(linkId) && enabled,
+    staleTime: 30_000,
+  });
+}
+
 export function issueClickUpLinkOptions(wsId: string, issueId: string, enabled: boolean) {
   return queryOptions({
     queryKey: clickupKeys.issueLink(wsId, issueId),

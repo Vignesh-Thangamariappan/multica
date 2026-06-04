@@ -171,6 +171,20 @@ func TestClickUpConnectListImportIdempotent(t *testing.T) {
 		t.Fatalf("first import: %+v", first)
 	}
 
+	// Preview lists both tasks, flagging the imported ones.
+	w = httptest.NewRecorder()
+	testHandler.PreviewClickUpImport(w, withURLParams(
+		newRequest("GET", "/api/clickup/links/"+link.ID+"/preview", nil),
+		"id", testWorkspaceID, "linkId", link.ID))
+	if w.Code != http.StatusOK {
+		t.Fatalf("preview: expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var previews []clickup.TaskPreview
+	_ = json.Unmarshal(w.Body.Bytes(), &previews)
+	if len(previews) != 2 || !previews[0].AlreadyImported || !previews[1].AlreadyImported {
+		t.Fatalf("preview after import: %+v", previews)
+	}
+
 	// Second import is fully idempotent.
 	w = httptest.NewRecorder()
 	testHandler.ImportClickUpList(w, withURLParams(
@@ -296,5 +310,40 @@ func TestSetClickUpKeyRefusedWhenEnvManaged(t *testing.T) {
 		map[string]string{"secret_key": base64.StdEncoding.EncodeToString(raw)}))
 	if w.Code != http.StatusConflict {
 		t.Fatalf("env-managed: expected 409, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestClickUpSelectiveImport(t *testing.T) {
+	installClickUpForTest(t)
+	projectID := createClickUpTestProject(t)
+
+	w := httptest.NewRecorder()
+	testHandler.CreateClickUpLink(w, withURLParam(newRequest("POST", "/api/clickup/links",
+		map[string]string{"project_id": projectID, "list_id": "list1", "list_name": "Stub List"}), "id", testWorkspaceID))
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create link: %d: %s", w.Code, w.Body.String())
+	}
+	var link ClickUpLinkResponse
+	_ = json.Unmarshal(w.Body.Bytes(), &link)
+
+	// Import only ct2 — ct1 must not be counted or created.
+	w = httptest.NewRecorder()
+	testHandler.ImportClickUpList(w, withURLParams(
+		newRequest("POST", "/api/clickup/links/"+link.ID+"/import",
+			map[string]any{"include_closed": false, "task_ids": []string{"ct2"}}),
+		"id", testWorkspaceID, "linkId", link.ID))
+	if w.Code != http.StatusOK {
+		t.Fatalf("selective import: expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var summary clickup.ImportSummary
+	_ = json.Unmarshal(w.Body.Bytes(), &summary)
+	if summary.Created != 1 || summary.Skipped != 0 {
+		t.Fatalf("selective import summary: %+v", summary)
+	}
+
+	var n int
+	if err := testPool.QueryRow(context.Background(),
+		`SELECT count(*) FROM clickup_task_link WHERE task_id = 'ct1'`).Scan(&n); err != nil || n != 0 {
+		t.Fatalf("unselected task imported: n=%d err=%v", n, err)
 	}
 }

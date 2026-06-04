@@ -65,6 +65,7 @@ export type {
   ClickUpFolder,
   ClickUpSpaceTree,
   ClickUpImportSummary,
+  ClickUpTaskPreview,
   ClickUpTaskLink,
   CreateClickUpLinkRequest,
 } from "./clickup";

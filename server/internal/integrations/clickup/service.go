@@ -195,7 +195,10 @@ type ImportSummary struct {
 // Idempotent: tasks already linked (link_id, task_id) are skipped, so
 // re-running an import never duplicates issues. Open-only by default
 // (RFC open question #2); includeClosed opts into closed tasks.
-func (s *Service) ImportList(ctx context.Context, link db.ClickupListLink, actorID pgtype.UUID, includeClosed bool) (ImportSummary, error) {
+// taskIDs, when non-empty, restricts the import to exactly those tasks —
+// the UI's selective-import picker; unselected tasks are not counted in
+// the summary at all (they were never candidates).
+func (s *Service) ImportList(ctx context.Context, link db.ClickupListLink, actorID pgtype.UUID, includeClosed bool, taskIDs []string) (ImportSummary, error) {
 	client, _, err := s.clientFor(ctx, link.WorkspaceID)
 	if err != nil {
 		return ImportSummary{}, err
@@ -205,6 +208,14 @@ func (s *Service) ImportList(ctx context.Context, link db.ClickupListLink, actor
 		return ImportSummary{}, err
 	}
 
+	var selected map[string]struct{}
+	if len(taskIDs) > 0 {
+		selected = make(map[string]struct{}, len(taskIDs))
+		for _, id := range taskIDs {
+			selected[id] = struct{}{}
+		}
+	}
+
 	var summary ImportSummary
 	for page := 0; ; page++ {
 		tasks, lastPage, err := client.GetTasksPage(ctx, link.ListID, page, includeClosed)
@@ -212,6 +223,11 @@ func (s *Service) ImportList(ctx context.Context, link db.ClickupListLink, actor
 			return summary, err
 		}
 		for _, task := range tasks {
+			if selected != nil {
+				if _, ok := selected[task.ID]; !ok {
+					continue
+				}
+			}
 			switch err := s.importTask(ctx, link, task, statusMap, actorID); {
 			case err == nil:
 				summary.Created++
@@ -378,4 +394,52 @@ func dueDateFromMs(ms *string) pgtype.Date {
 		return pgtype.Date{}
 	}
 	return pgtype.Date{Time: time.UnixMilli(n).UTC(), Valid: true}
+}
+
+// TaskPreview is one row of the pre-import picker: enough to choose by,
+// no task content beyond the name.
+type TaskPreview struct {
+	ID              string `json:"id"`
+	Name            string `json:"name"`
+	Status          string `json:"status"`
+	StatusType      string `json:"status_type"`
+	AlreadyImported bool   `json:"already_imported"`
+}
+
+// PreviewList fetches a linked list's tasks without importing, so the
+// UI can offer per-task selection instead of a blind bulk import.
+func (s *Service) PreviewList(ctx context.Context, link db.ClickupListLink, includeClosed bool) ([]TaskPreview, error) {
+	client, _, err := s.clientFor(ctx, link.WorkspaceID)
+	if err != nil {
+		return nil, err
+	}
+	previews := make([]TaskPreview, 0, 64)
+	for page := 0; ; page++ {
+		tasks, lastPage, err := client.GetTasksPage(ctx, link.ListID, page, includeClosed)
+		if err != nil {
+			return nil, err
+		}
+		for _, task := range tasks {
+			imported := false
+			if _, err := s.queries.GetClickUpTaskLinkByTask(ctx, db.GetClickUpTaskLinkByTaskParams{
+				LinkID: link.ID,
+				TaskID: task.ID,
+			}); err == nil {
+				imported = true
+			} else if !errors.Is(err, pgx.ErrNoRows) {
+				return nil, err
+			}
+			previews = append(previews, TaskPreview{
+				ID:              task.ID,
+				Name:            task.Name,
+				Status:          task.Status.Status,
+				StatusType:      task.Status.Type,
+				AlreadyImported: imported,
+			})
+		}
+		if lastPage || len(tasks) == 0 {
+			break
+		}
+	}
+	return previews, nil
 }

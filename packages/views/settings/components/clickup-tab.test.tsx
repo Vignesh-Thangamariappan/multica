@@ -41,6 +41,7 @@ vi.mock("@multica/core/clickup", () => ({
   clickupInstallationOptions: () => ({ queryKey: ["clickup-installation"] }),
   clickupLinksOptions: () => ({ queryKey: ["clickup-links"] }),
   clickupSpacesOptions: () => ({ queryKey: ["clickup-spaces"] }),
+  clickupImportPreviewOptions: () => ({ queryKey: ["clickup-preview"] }),
   useConnectClickUp: () => ({ mutate: vi.fn(), isPending: false }),
   useDisconnectClickUp: () => ({ mutate: vi.fn(), isPending: false }),
   useCreateClickUpLink: () => ({ mutate: vi.fn(), isPending: false }),

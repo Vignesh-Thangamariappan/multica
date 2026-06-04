@@ -5,6 +5,7 @@ import type {
   ClickUpInstallation,
   ClickUpLink,
   ClickUpSpaceTree,
+  ClickUpTaskPreview,
   WorkspaceKnowledge,
   AgentTemplateSummary,
   Attachment,
@@ -945,3 +946,14 @@ export const ClickUpSpaceTreeListSchema = z.array(
   }).loose(),
 );
 export const EMPTY_CLICKUP_SPACE_TREE: ClickUpSpaceTree[] = [];
+
+export const ClickUpTaskPreviewListSchema = z.array(
+  z.object({
+    id: z.string(),
+    name: z.string(),
+    status: z.string().default(""),
+    status_type: z.string().default(""),
+    already_imported: z.boolean().default(false),
+  }).loose(),
+);
+export const EMPTY_CLICKUP_TASK_PREVIEWS: ClickUpTaskPreview[] = [];

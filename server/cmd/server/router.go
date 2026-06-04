@@ -954,6 +954,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 				r.With(adminOnly).Get("/spaces", h.DiscoverClickUpLists)
 				r.With(adminOnly).Post("/links", h.CreateClickUpLink)
 				r.With(adminOnly).Delete("/links/{linkId}", h.DeleteClickUpLink)
+				r.With(adminOnly).Get("/links/{linkId}/preview", h.PreviewClickUpImport)
 				r.With(adminOnly).Post("/links/{linkId}/import", h.ImportClickUpList)
 			})
 

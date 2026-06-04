@@ -379,6 +379,11 @@
     "activate_button": "활성화",
     "activated_toast": "ClickUp 통합이 활성화되었습니다",
     "activate_failed_toast": "활성화 실패",
-    "activate_generate_hint": "생성 방법: openssl rand -base64 32"
+    "activate_generate_hint": "생성 방법: openssl rand -base64 32",
+    "import_dialog_title": "ClickUp에서 작업 가져오기",
+    "import_dialog_description": "이슈로 가져올 작업을 선택하세요. 완료/종료된 작업은 기본적으로 선택 해제되며, 이미 가져온 작업은 잠겨 있습니다.",
+    "import_dialog_loading": "ClickUp에서 작업을 불러오는 중…",
+    "import_dialog_empty": "이 리스트에 작업이 없습니다.",
+    "import_selected_button": "{{count}}개 작업 가져오기"
   }
 }

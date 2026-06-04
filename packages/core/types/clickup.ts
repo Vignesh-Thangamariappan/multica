@@ -54,3 +54,11 @@ export interface CreateClickUpLinkRequest {
   list_id: string;
   list_name: string;
 }
+
+export interface ClickUpTaskPreview {
+  id: string;
+  name: string;
+  status: string;
+  status_type: string;
+  already_imported: boolean;
+}

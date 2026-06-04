@@ -379,6 +379,11 @@
     "activate_button": "有効化",
     "activated_toast": "ClickUp 連携を有効化しました",
     "activate_failed_toast": "有効化に失敗しました",
-    "activate_generate_hint": "生成方法: openssl rand -base64 32"
+    "activate_generate_hint": "生成方法: openssl rand -base64 32",
+    "import_dialog_title": "ClickUp からタスクをインポート",
+    "import_dialog_description": "イシューとして取り込むタスクを選択してください。完了・クローズ済みタスクはデフォルトで未選択、インポート済みタスクはロックされています。",
+    "import_dialog_loading": "ClickUp からタスクを読み込み中…",
+    "import_dialog_empty": "このリストにタスクはありません。",
+    "import_selected_button": "{{count}} 件のタスクをインポート"
   }
 }

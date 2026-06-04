@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Download, Link2, Trash2 } from "lucide-react";
 import { Button } from "@multica/ui/components/ui/button";
 import { Card, CardContent } from "@multica/ui/components/ui/card";
+import { Checkbox } from "@multica/ui/components/ui/checkbox";
 import { Input } from "@multica/ui/components/ui/input";
 import {
   AlertDialog,
@@ -40,6 +41,7 @@ import {
   clickupInstallationOptions,
   clickupLinksOptions,
   clickupSpacesOptions,
+  clickupImportPreviewOptions,
   useSetClickUpKey,
   useConnectClickUp,
   useCreateClickUpLink,
@@ -47,7 +49,7 @@ import {
   useDisconnectClickUp,
   useImportClickUpList,
 } from "@multica/core/clickup";
-import type { ClickUpLink, ClickUpList } from "@multica/core/types";
+import type { ClickUpLink, ClickUpList, ClickUpTaskPreview } from "@multica/core/types";
 import { ApiError } from "@multica/core/api";
 import { useT } from "../../i18n";
 
@@ -271,8 +273,8 @@ function LinkRow({ link, canManage }: { link: ClickUpLink; canManage: boolean })
   const { t } = useT("settings");
   const wsId = useWorkspaceId();
   const { data: projects = [] } = useQuery(projectListOptions(wsId));
-  const importList = useImportClickUpList();
   const deleteLink = useDeleteClickUpLink();
+  const [importOpen, setImportOpen] = useState(false);
 
   const projectName =
     projects.find((p) => p.id === link.project_id)?.title ?? link.project_id;
@@ -295,27 +297,10 @@ function LinkRow({ link, canManage }: { link: ClickUpLink; canManage: boolean })
                 size="sm"
                 variant="outline"
                 className="h-7"
-                disabled={importList.isPending}
-                onClick={() =>
-                  importList.mutate(
-                    { id: link.id, includeClosed: false },
-                    {
-                      onSuccess: (s) =>
-                        toast.success(
-                          t(($) => $.clickup.import_done_toast, {
-                            created: s.created,
-                            skipped: s.skipped,
-                          }),
-                        ),
-                      onError: () => toast.error(t(($) => $.clickup.import_failed_toast)),
-                    },
-                  )
-                }
+                onClick={() => setImportOpen(true)}
               >
                 <Download className="size-3.5" />
-                {importList.isPending
-                  ? t(($) => $.clickup.importing)
-                  : t(($) => $.clickup.import_button)}
+                {t(($) => $.clickup.import_button)}
               </Button>
               <Button
                 size="sm"
@@ -330,7 +315,155 @@ function LinkRow({ link, canManage }: { link: ClickUpLink; canManage: boolean })
           )}
         </div>
       </CardContent>
+      {importOpen && (
+        <ImportDialog link={link} onClose={() => setImportOpen(false)} />
+      )}
     </Card>
+  );
+}
+
+// ImportDialog previews the list's tasks grouped by ClickUp status, with
+// per-task checkboxes, so importing is a choice, not a board-wide dump.
+// Defaults: open/custom statuses checked, done/closed unchecked,
+// already-imported rows shown checked + disabled.
+function ImportDialog({ link, onClose }: { link: ClickUpLink; onClose: () => void }) {
+  const { t } = useT("settings");
+  const wsId = useWorkspaceId();
+  const { data: previews = [], isLoading } = useQuery(
+    clickupImportPreviewOptions(wsId, link.id, true, true),
+  );
+  const importList = useImportClickUpList();
+
+  const importable = useMemo(
+    () => previews.filter((p) => !p.already_imported),
+    [previews],
+  );
+  const [selected, setSelected] = useState<Set<string> | null>(null);
+  // Until the user touches a checkbox, derive the default selection from
+  // the loaded preview: open/custom statuses in, done/closed out.
+  const effective = useMemo(() => {
+    if (selected !== null) return selected;
+    return new Set(
+      importable
+        .filter((p) => p.status_type !== "done" && p.status_type !== "closed")
+        .map((p) => p.id),
+    );
+  }, [selected, importable]);
+
+  const groups = useMemo(() => {
+    const byStatus = new Map<string, ClickUpTaskPreview[]>();
+    for (const p of previews) {
+      const list = byStatus.get(p.status) ?? [];
+      list.push(p);
+      byStatus.set(p.status, list);
+    }
+    return [...byStatus.entries()];
+  }, [previews]);
+
+  const toggle = (id: string) => {
+    const next = new Set(effective);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelected(next);
+  };
+  const toggleGroup = (tasks: ClickUpTaskPreview[]) => {
+    const ids = tasks.filter((p) => !p.already_imported).map((p) => p.id);
+    const allOn = ids.every((id) => effective.has(id));
+    const next = new Set(effective);
+    for (const id of ids) {
+      if (allOn) next.delete(id);
+      else next.add(id);
+    }
+    setSelected(next);
+  };
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{t(($) => $.clickup.import_dialog_title)}</DialogTitle>
+          <DialogDescription>
+            {t(($) => $.clickup.import_dialog_description)}
+          </DialogDescription>
+        </DialogHeader>
+        {isLoading ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            {t(($) => $.clickup.import_dialog_loading)}
+          </p>
+        ) : previews.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            {t(($) => $.clickup.import_dialog_empty)}
+          </p>
+        ) : (
+          <div className="flex max-h-80 flex-col gap-3 overflow-y-auto pr-1">
+            {groups.map(([status, tasks]) => {
+              const selectable = tasks.filter((p) => !p.already_imported);
+              const allOn =
+                selectable.length > 0 && selectable.every((p) => effective.has(p.id));
+              return (
+                <div key={status} className="flex flex-col gap-1">
+                  <label className="flex items-center gap-2 text-xs font-medium uppercase text-muted-foreground">
+                    <Checkbox
+                      checked={allOn}
+                      disabled={selectable.length === 0}
+                      onCheckedChange={() => toggleGroup(tasks)}
+                    />
+                    {status} ({tasks.length})
+                  </label>
+                  {tasks.map((p) => (
+                    <label key={p.id} className="flex items-center gap-2 pl-6 text-sm">
+                      <Checkbox
+                        checked={p.already_imported || effective.has(p.id)}
+                        disabled={p.already_imported}
+                        onCheckedChange={() => toggle(p.id)}
+                      />
+                      <span
+                        className={
+                          p.already_imported
+                            ? "text-muted-foreground line-through"
+                            : "truncate"
+                        }
+                      >
+                        {p.name}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            {t(($) => $.clickup.cancel)}
+          </Button>
+          <Button
+            disabled={effective.size === 0 || importList.isPending}
+            onClick={() =>
+              importList.mutate(
+                { id: link.id, includeClosed: true, taskIds: [...effective] },
+                {
+                  onSuccess: (s) => {
+                    toast.success(
+                      t(($) => $.clickup.import_done_toast, {
+                        created: s.created,
+                        skipped: s.skipped,
+                      }),
+                    );
+                    onClose();
+                  },
+                  onError: () => toast.error(t(($) => $.clickup.import_failed_toast)),
+                },
+              )
+            }
+          >
+            {importList.isPending
+              ? t(($) => $.clickup.importing)
+              : t(($) => $.clickup.import_selected_button, { count: effective.size })}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

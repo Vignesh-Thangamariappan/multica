@@ -379,6 +379,11 @@
     "activate_button": "启用",
     "activated_toast": "ClickUp 集成已启用",
     "activate_failed_toast": "启用失败",
-    "activate_generate_hint": "生成方式：openssl rand -base64 32"
+    "activate_generate_hint": "生成方式：openssl rand -base64 32",
+    "import_dialog_title": "从 ClickUp 导入任务",
+    "import_dialog_description": "选择要导入为 issue 的任务。已完成和已关闭的任务默认不勾选；已导入的任务已锁定。",
+    "import_dialog_loading": "正在从 ClickUp 加载任务…",
+    "import_dialog_empty": "此列表中没有任务。",
+    "import_selected_button": "导入 {{count}} 个任务"
   }
 }

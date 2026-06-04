@@ -63,8 +63,15 @@ export function useImportClickUpList() {
   const qc = useQueryClient();
   const wsId = useWorkspaceId();
   return useMutation({
-    mutationFn: ({ id, includeClosed }: { id: string; includeClosed: boolean }) =>
-      api.importClickUpList(id, includeClosed),
+    mutationFn: ({
+      id,
+      includeClosed,
+      taskIds,
+    }: {
+      id: string;
+      includeClosed: boolean;
+      taskIds?: string[];
+    }) => api.importClickUpList(id, includeClosed, taskIds),
     onSettled: () => {
       // Imported issues land in the issues cache too.
       qc.invalidateQueries({ queryKey: clickupKeys.all(wsId) });
