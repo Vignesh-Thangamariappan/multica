@@ -47,6 +47,26 @@ export VITE_API_URL="${VITE_API_URL:-http://localhost:${PORT:-8080}}"
 export VITE_WS_URL="${VITE_WS_URL:-ws://localhost:${PORT:-8080}/ws}"
 export VITE_APP_URL="${VITE_APP_URL:-${MULTICA_APP_URL:-http://localhost:3000}}"
 
+# Since the upstream runtime-config change (MUL-2804 era), the PACKAGED
+# desktop app ignores build-time VITE_* values and reads
+# ~/.multica/desktop.json at launch — falling back to https://api.multica.ai
+# (the cloud) when the file is missing. Seed it with the self-host URLs so
+# a freshly packaged app logs into this instance, not the cloud. Existing
+# files are left untouched (the user may have customised them).
+DESKTOP_RUNTIME_CONFIG="$HOME/.multica/desktop.json"
+if [ ! -f "$DESKTOP_RUNTIME_CONFIG" ]; then
+  mkdir -p "$HOME/.multica"
+  cat > "$DESKTOP_RUNTIME_CONFIG" <<JSON
+{
+  "schemaVersion": 1,
+  "apiUrl": "${VITE_API_URL}",
+  "wsUrl": "${VITE_WS_URL}",
+  "appUrl": "${VITE_APP_URL}"
+}
+JSON
+  echo "==> Seeded $DESKTOP_RUNTIME_CONFIG (self-host runtime config)"
+fi
+
 echo "==> Building Desktop for self-host:"
 echo "    API: $VITE_API_URL"
 echo "    WS:  $VITE_WS_URL"
