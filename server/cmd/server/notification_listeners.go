@@ -172,15 +172,15 @@ func deliverToSubscriber(reason, notifType string, statusIsHandoff bool) bool {
 // notifTypeToGroup maps each InboxItemType to a user-configurable preference
 // group. Types not in this map are always delivered (not configurable).
 var notifTypeToGroup = map[string]string{
-	"issue_assigned":     "assignments",
-	"unassigned":         "assignments",
-	"assignee_changed":   "assignments",
-	"status_changed":     "status_changes",
-	"new_comment":        "comments",
-	"mentioned":          "mentions",
-	"priority_changed":   "updates",
-	"start_date_changed": "updates",
-	"due_date_changed":   "updates",
+	"issue_assigned":      "assignments",
+	"unassigned":          "assignments",
+	"assignee_changed":    "assignments",
+	"status_changed":      "status_changes",
+	"new_comment":         "comments",
+	"mentioned":           "mentions",
+	"priority_changed":    "updates",
+	"start_date_changed":  "updates",
+	"due_date_changed":    "updates",
 	"task_completed":      "agent_activity",
 	"task_failed":         "agent_activity",
 	"agent_blocked":       "agent_activity",
@@ -485,7 +485,13 @@ func notifyIssueSubscribers(
 }
 
 // notifyDirect creates an inbox item for a specific recipient. Skips if the
-// recipient is the actor. Publishes an inbox:new event on success.
+// recipient is the actor, unless allowSelfNotify is set. Publishes an inbox:new
+// event on success.
+//
+// allowSelfNotify exists for synthetic actors: an autopilot-created issue
+// carries the assignee agent as both actor and assignee (the agent is the
+// attributed creator, but it did not itself decide to create the issue — the
+// autopilot did), so the assignment notification must still reach it.
 func notifyDirect(
 	ctx context.Context,
 	queries *db.Queries,
@@ -501,9 +507,19 @@ func notifyDirect(
 	title string,
 	body string,
 	details []byte,
+	allowSelfNotify bool,
 ) {
-	// Skip if recipient is the actor
-	if recipientID == e.ActorID {
+	// inbox_item.recipient_type only permits 'member' and 'agent'. A 'squad'
+	// assignee (issues can be squad-assigned since MUL-2429) has no inbox of
+	// its own — its members are reached via the subscriber / squad-leader
+	// paths — so drop it here instead of letting CreateInboxItem fail the
+	// CHECK constraint and log a spurious error.
+	if recipientType != "member" && recipientType != "agent" {
+		return
+	}
+
+	// Skip if recipient is the actor (unless explicitly allowed).
+	if recipientID == e.ActorID && !allowSelfNotify {
 		return
 	}
 
@@ -687,6 +703,13 @@ func registerNotificationListeners(bus *events.Bus, queries *db.Queries) {
 			return
 		}
 
+		// Autopilot-created issues attribute the actor to the assignee agent.
+		// Allow the assignment notification through even when actor == assignee
+		// so the agent still learns it has work (the autopilot, not the agent,
+		// decided to create the issue).
+		originType, _ := payload["origin_type"].(string)
+		fromAutopilot := originType == "autopilot"
+
 		// Track who already got notified to avoid duplicates
 		skip := map[string]bool{e.ActorID: true}
 
@@ -700,6 +723,7 @@ func registerNotificationListeners(bus *events.Bus, queries *db.Queries) {
 				issue.Title,
 				"",
 				emptyDetails,
+				fromAutopilot,
 			)
 		}
 
@@ -762,6 +786,7 @@ func registerNotificationListeners(bus *events.Bus, queries *db.Queries) {
 					issue.Title,
 					"",
 					assigneeDetails,
+					false,
 				)
 			}
 
@@ -776,6 +801,7 @@ func registerNotificationListeners(bus *events.Bus, queries *db.Queries) {
 					issue.Title,
 					"",
 					assigneeDetails,
+					false,
 				)
 			}
 
@@ -995,6 +1021,7 @@ func registerNotificationListeners(bus *events.Bus, queries *db.Queries) {
 			"reaction_added", "info",
 			issueTitle, "",
 			details,
+			false,
 		)
 	})
 
@@ -1035,6 +1062,7 @@ func registerNotificationListeners(bus *events.Bus, queries *db.Queries) {
 			"reaction_added", "info",
 			issueTitle, "",
 			details,
+			false,
 		)
 	})
 
