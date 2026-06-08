@@ -223,6 +223,10 @@ func (s *AutopilotService) dispatchCreateIssue(ctx context.Context, ap db.Autopi
 		ActorID:     util.UUIDToString(leader.ID),
 		Payload: map[string]any{
 			"issue": issueToMap(issue, prefix),
+			// Lets the notification listener distinguish an autopilot-spawned
+			// issue (where actor == assignee agent) from a genuine agent
+			// self-assignment, so the assignee still gets an inbox item.
+			"origin_type": "autopilot",
 		},
 	})
 	s.captureIssueCreatedFromAutopilot(ap, run, issue, leader.ID)

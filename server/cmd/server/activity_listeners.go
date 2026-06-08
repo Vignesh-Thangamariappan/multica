@@ -25,7 +25,10 @@ func registerActivityListeners(bus *events.Bus, queries *db.Queries) {
 		if !ok {
 			return
 		}
-		issue, ok := payload["issue"].(handler.IssueResponse)
+		// Autopilot-created issues arrive as a map[string]any rather than a
+		// handler.IssueResponse struct; a bare cast silently dropped their
+		// "created" activity entry. extractIssueFields normalizes both.
+		issue, ok := extractIssueFields(payload["issue"])
 		if !ok {
 			return
 		}
