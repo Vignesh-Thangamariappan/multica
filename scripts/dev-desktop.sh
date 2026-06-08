@@ -100,6 +100,10 @@ fi
 # ---------- Database ----------
 bash scripts/ensure-postgres.sh "$ENV_FILE"
 
+# ---------- Object storage ----------
+# Best-effort: serves MinIO-era avatar/attachment URLs (http://localhost:9000/...).
+bash scripts/ensure-minio.sh
+
 echo "==> Running migrations..."
 (cd server && go run ./cmd/migrate up)
 
