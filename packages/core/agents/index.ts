@@ -10,6 +10,7 @@ export * from "./queries";
 export * from "./use-agent-presence";
 export * from "./use-update-agent-allowlist";
 export * from "./use-agent-activity";
+export * from "./use-agent-live-actions";
 export * from "./use-workspace-presence-prefetch";
 export * from "./constants";
 export * from "./conversation-starters";

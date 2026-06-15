@@ -26,6 +26,7 @@ import {
   AiCreateAgentPage,
   ChooseCreateMethodPage,
   ManualCreateAgentPage,
+  AgentsOfficePage,
 } from "@multica/views/agents";
 import { SquadsPage, SquadDetailPage as SquadDetailPageView } from "@multica/views/squads/components";
 import { InboxPage } from "@multica/views/inbox";
@@ -211,6 +212,7 @@ export const appRoutes: RouteObject[] = [
             element: <AgentDetailPage />,
             handle: { title: "Agent" },
           },
+          { path: "office", element: <AgentsOfficePage />, handle: { title: "Office" } },
           {
             path: "members/:id",
             element: <MemberDetailPage />,

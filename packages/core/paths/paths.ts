@@ -50,6 +50,7 @@ function workspaceScoped(slug: string) {
     // the buttons the viewer just looked at.
     agentConversationStarters: (id: string) =>
       `${ws}/agents/${encode(id)}?view=instructions&focus=${AGENT_FOCUS_CONVERSATION_STARTERS}`,
+    office: () => `${ws}/office`,
     memberDetail: (id: string) => `${ws}/members/${encode(id)}`,
     squads: () => `${ws}/squads`,
     squadDetail: (id: string) => `${ws}/squads/${encode(id)}`,
