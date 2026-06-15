@@ -60,6 +60,9 @@ catalog:
   # YAML parsing (skill frontmatter)
   yaml: "^2.6.0"
 
+  # Pixel-art office rendering (Agent Office view)
+  phaser: "^3.90.0"
+
   # Testing
   vitest: "^4.1.0"
   jsdom: "^29.0.1"

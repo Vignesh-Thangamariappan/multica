@@ -3,6 +3,7 @@ export * from "./derive-presence";
 export * from "./queries";
 export * from "./use-agent-presence";
 export * from "./use-agent-activity";
+export * from "./use-agent-live-actions";
 export * from "./use-workspace-presence-prefetch";
 export * from "./constants";
 export * from "./visibility-label";
