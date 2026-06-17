@@ -225,6 +225,7 @@ type Handler struct {
 	SeatCapacity          seatcapacity.Executor
 	SeatCapacityLocker    seatcapacity.WorkspaceLocker
 	SeatCapacityWorker    *seatcapacity.Worker
+	MeetingService        *service.MeetingService
 	EmailService          *service.EmailService
 	UpdateStore           UpdateStore
 	ModelListStore        ModelListStore
@@ -518,6 +519,7 @@ func New(queries *db.Queries, txStarter txStarter, hub *realtime.Hub, bus *event
 		WebhookIPRateLimiter:         NewMemoryWebhookIPRateLimiter(DefaultWebhookIPRateLimit()),
 		WebhookAbsoluteIPRateLimiter: NewMemoryWebhookAbsoluteIPRateLimiter(DefaultWebhookAbsoluteIPRateLimit()),
 		InvitationRateLimiters:       NewMemoryInvitationRateLimiters(DefaultInvitationRateLimits()),
+		MeetingService:        service.NewMeetingService(queries, bus, taskSvc),
 		CloudRuntime: cloudruntime.NewClient(cloudruntime.Config{
 			BaseURL: cfg.CloudURL,
 			Timeout: cfg.CloudTimeout,
