@@ -738,6 +738,18 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 			// Squad leader evaluation (writes to activity_log)
 			r.Post("/api/issues/{id}/squad-evaluated", h.RecordSquadLeaderEvaluation)
 
+			// Meetings — turn-based agent debates in the Office
+			r.Route("/api/meetings", func(r chi.Router) {
+				r.Get("/", h.ListMeetings)
+				r.Post("/", h.CreateMeeting)
+				r.Route("/{id}", func(r chi.Router) {
+					r.Get("/", h.GetMeeting)
+					r.Post("/start", h.StartMeeting)
+					r.Post("/cancel", h.CancelMeeting)
+					r.Post("/messages", h.AddMeetingMessage)
+				})
+			})
+
 			// Autopilots
 			r.Route("/api/autopilots", func(r chi.Router) {
 				r.Get("/", h.ListAutopilots)

@@ -538,6 +538,55 @@ type LarkUserBinding struct {
 	BoundAt        pgtype.Timestamptz `json:"bound_at"`
 }
 
+type Meeting struct {
+	ID           pgtype.UUID        `json:"id"`
+	WorkspaceID  pgtype.UUID        `json:"workspace_id"`
+	Title        string             `json:"title"`
+	Type         string             `json:"type"`
+	Topic        string             `json:"topic"`
+	IssueID      pgtype.UUID        `json:"issue_id"`
+	Status       string             `json:"status"`
+	Rounds       int32              `json:"rounds"`
+	CurrentRound int32              `json:"current_round"`
+	CurrentTurn  int32              `json:"current_turn"`
+	Summary      string             `json:"summary"`
+	CreatedBy    pgtype.UUID        `json:"created_by"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	StartedAt    pgtype.Timestamptz `json:"started_at"`
+	CompletedAt  pgtype.Timestamptz `json:"completed_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+}
+
+type MeetingMessage struct {
+	ID         pgtype.UUID        `json:"id"`
+	MeetingID  pgtype.UUID        `json:"meeting_id"`
+	Seq        int32              `json:"seq"`
+	Round      int32              `json:"round"`
+	AuthorType string             `json:"author_type"`
+	AuthorID   pgtype.UUID        `json:"author_id"`
+	Content    string             `json:"content"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+}
+
+type MeetingParticipant struct {
+	ID            pgtype.UUID        `json:"id"`
+	MeetingID     pgtype.UUID        `json:"meeting_id"`
+	AgentID       pgtype.UUID        `json:"agent_id"`
+	SpeakingOrder int32              `json:"speaking_order"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
+type MeetingTurn struct {
+	ID        pgtype.UUID        `json:"id"`
+	MeetingID pgtype.UUID        `json:"meeting_id"`
+	TaskID    pgtype.UUID        `json:"task_id"`
+	AgentID   pgtype.UUID        `json:"agent_id"`
+	Round     int32              `json:"round"`
+	TurnIndex int32              `json:"turn_index"`
+	Status    string             `json:"status"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
 type Member struct {
 	ID          pgtype.UUID        `json:"id"`
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`

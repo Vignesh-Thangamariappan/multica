@@ -112,6 +112,13 @@ const (
 	EventSquadUpdated = "squad:updated"
 	EventSquadDeleted = "squad:deleted"
 
+	// Meeting events — turn-based agent debates in the Office
+	EventMeetingCreated   = "meeting:created"
+	EventMeetingStarted   = "meeting:started"
+	EventMeetingMessage   = "meeting:message"   // one debate turn (or note) appended
+	EventMeetingUpdated   = "meeting:updated"    // status / progress change
+	EventMeetingCompleted = "meeting:completed"
+
 	// Daemon events
 	EventDaemonHeartbeat     = "daemon:heartbeat"
 	EventDaemonHeartbeatAck  = "daemon:heartbeat_ack"
