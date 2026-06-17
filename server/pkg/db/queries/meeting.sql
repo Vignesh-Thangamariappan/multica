@@ -69,6 +69,14 @@ SELECT * FROM meeting_message
 WHERE meeting_id = $1
 ORDER BY seq ASC;
 
+-- name: CreateMeetingTask :one
+-- A debate-turn agent task: no issue/chat/autopilot link; the per-turn prompt
+-- and meeting linkage live in context JSONB (type == "meeting_turn"). Mirrors
+-- CreateQuickCreateTask.
+INSERT INTO agent_task_queue (agent_id, runtime_id, issue_id, status, priority, context)
+VALUES ($1, $2, NULL, 'queued', $3, $4)
+RETURNING *;
+
 -- name: CreateMeetingTurn :one
 INSERT INTO meeting_turn (meeting_id, task_id, agent_id, round, turn_index)
 VALUES ($1, $2, $3, $4, $5)

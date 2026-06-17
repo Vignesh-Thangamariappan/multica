@@ -7803,6 +7803,7 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, slot i
 		AutopilotTriggerPayload:          strings.TrimSpace(string(task.AutopilotTriggerPayload)),
 		QuickCreatePrompt:                task.QuickCreatePrompt,
 		IsSquadLeader:                    taskIsSquadLeader(task),
+		MeetingPrompt:                    task.MeetingPrompt,
 		RequestingUserName:               task.RequestingUserName,
 		RequestingUserProfileDescription: task.RequestingUserProfileDescription,
 		InitiatorType:                    task.InitiatorType,

@@ -150,6 +150,7 @@ type Task struct {
 	WakeupSystemRule              string                 `json:"wakeup_system_rule,omitempty"` // a platform rule (e.g. child_done) started the run
 	WakeupJoined                  string                 `json:"wakeup_joined,omitempty"`      // wakeups that joined this run instead of queuing their own
 	HandoffNote                   string                 `json:"handoff_note,omitempty"`       // legacy assignment handoff instruction; rendered only in the per-turn prompt
+	MeetingPrompt            string                `json:"meeting_prompt,omitempty"`              // full debate-turn prompt for meeting tasks (topic + transcript + this agent's turn); server-built, daemon passes it through
 
 	SquadID               string `json:"squad_id,omitempty"`                // when the picker was a squad, the squad's UUID; Agent is still the resolved leader
 	SquadName             string `json:"squad_name,omitempty"`              // display name for the picker squad, used in prompt text

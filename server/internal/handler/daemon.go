@@ -3785,6 +3785,16 @@ func (h *Handler) ClaimTaskByRuntime(w http.ResponseWriter, r *http.Request) {
 		if failure.settled {
 			payloadBytes, _ = writeMeasuredJSON(w, http.StatusOK, map[string]any{"task": nil})
 			return
+	// Meeting (debate-turn) task: the full per-turn prompt and the workspace
+	// live in the task's context JSONB — no issue / chat / autopilot link.
+	if task.Context != nil && !task.IssueID.Valid && !task.ChatSessionID.Valid && !task.AutopilotRunID.Valid {
+		var mc service.MeetingTurnContext
+		if json.Unmarshal(task.Context, &mc) == nil && mc.Type == service.MeetingTurnContextType {
+			resp.MeetingPrompt = mc.Prompt
+			resp.WorkspaceID = mc.WorkspaceID
+		}
+	}
+
 		}
 		writeError(w, failure.status, failure.message)
 		return

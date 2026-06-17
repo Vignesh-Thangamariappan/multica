@@ -726,6 +726,7 @@ func main() {
 	// claim until the cache TTL expires.
 	taskSvc, autopilotSvc := backgroundServices(h)
 	registerAutopilotListeners(bus, autopilotSvc)
+	registerMeetingListeners(bus, h.MeetingService)
 
 	// Construct a LivenessStore that mirrors the one wired into the HTTP
 	// handler. Both the heartbeat write path (handler) and the sweeper read
