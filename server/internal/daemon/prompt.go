@@ -27,6 +27,9 @@ func BuildPrompt(task Task, provider string) string {
 	if task.AutopilotRunID != "" {
 		return buildAutopilotPrompt(task)
 	}
+	if task.MeetingPrompt != "" {
+		return buildMeetingPrompt(task)
+	}
 	if task.QuickCreatePrompt != "" {
 		return buildQuickCreatePrompt(task)
 	}
@@ -48,6 +51,15 @@ func buildRetryPrompt(task Task) string {
 	b.WriteString("Reflect on what went wrong, correct your approach, and try again.\n")
 	fmt.Fprintf(&b, "Run `rtk multica issue get %s --output json` to review the task, then complete it successfully.\n", task.IssueID)
 	return b.String()
+}
+
+// buildMeetingPrompt is the per-turn prompt for a meeting (turn-based agent
+// debate). The server builds the full text — meeting topic, the transcript so
+// far, and this agent's turn instruction — so the daemon passes it through
+// verbatim. The agent's job is to reply with text only; its stdout is captured
+// as the turn's contribution. There is no issue to read or comment on.
+func buildMeetingPrompt(task Task) string {
+	return task.MeetingPrompt
 }
 
 // buildQuickCreatePrompt constructs a prompt for quick-create tasks. The

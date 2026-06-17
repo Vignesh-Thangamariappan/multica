@@ -1551,6 +1551,16 @@ func (h *Handler) ClaimTaskByRuntime(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Meeting (debate-turn) task: the full per-turn prompt and the workspace
+	// live in the task's context JSONB — no issue / chat / autopilot link.
+	if task.Context != nil && !task.IssueID.Valid && !task.ChatSessionID.Valid && !task.AutopilotRunID.Valid {
+		var mc service.MeetingTurnContext
+		if json.Unmarshal(task.Context, &mc) == nil && mc.Type == service.MeetingTurnContextType {
+			resp.MeetingPrompt = mc.Prompt
+			resp.WorkspaceID = mc.WorkspaceID
+		}
+	}
+
 	// Workspace isolation check: the daemon uses this response's workspace_id
 	// as the only authority for MULTICA_WORKSPACE_ID in the agent env. An
 	// empty value would make the CLI silently fall back to the user-global

@@ -2,8 +2,10 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -12,6 +14,22 @@ import (
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/protocol"
 )
+
+// MeetingTurnContextType marks an agent task as a meeting debate turn. The
+// daemon detects this via context.type and runs the agent with Prompt as a
+// text-only contribution (see daemon/prompt.go buildMeetingPrompt).
+const MeetingTurnContextType = "meeting_turn"
+
+// turnIndexSummary is the sentinel turn_index for the final summarization turn.
+const turnIndexSummary = int32(-1)
+
+// MeetingTurnContext is the task context JSONB for a meeting debate turn.
+type MeetingTurnContext struct {
+	Type        string `json:"type"`
+	Prompt      string `json:"prompt"`
+	WorkspaceID string `json:"workspace_id"`
+	MeetingID   string `json:"meeting_id"`
+}
 
 // MeetingService owns the lifecycle of a meeting — a turn-based debate where
 // participating agents take turns responding to a topic over a number of
@@ -92,10 +110,9 @@ func (s *MeetingService) StartMeeting(ctx context.Context, m db.Meeting) (db.Mee
 	s.publish(protocol.EventMeetingStarted, started, nil)
 	s.publish(protocol.EventMeetingMessage, started, nil)
 
-	// TODO(turn-engine): enqueue the first agent turn (parts[0]) here. Each
-	// turn runs as an agent task seeded with the topic + transcript so far;
-	// OnTaskCompleted appends the reply and advances to the next turn/round,
-	// then summarizes. Pending the turn-execution mechanism decision.
+	// Kick off round 1, turn 0. Each turn runs as an agent task; OnTaskTerminal
+	// appends the reply and advances to the next turn/round, then summarizes.
+	s.enqueueTurn(ctx, started, parts, 1, 0)
 	return started, nil
 }
 
@@ -127,6 +144,284 @@ func (s *MeetingService) Cancel(ctx context.Context, m db.Meeting) (db.Meeting, 
 	}
 	s.publish(protocol.EventMeetingUpdated, cancelled, nil)
 	return cancelled, nil
+}
+
+// ─── Turn engine ─────────────────────────────────────────────────────────────
+
+// enqueueTurn enqueues the debate turn for parts[turnIndex] in the given round.
+// If that agent can't be dispatched (archived / no runtime), it records a note
+// and advances past them rather than stalling the meeting.
+func (s *MeetingService) enqueueTurn(ctx context.Context, m db.Meeting, parts []db.MeetingParticipant, round, turnIndex int32) {
+	if int(turnIndex) >= len(parts) {
+		return
+	}
+	p := parts[turnIndex]
+	prompt := s.buildTurnPrompt(ctx, m, parts, p.AgentID, round)
+	if err := s.enqueueAgentTask(ctx, m, p.AgentID, round, turnIndex, prompt); err != nil {
+		slog.Warn("meeting turn skipped", "meeting_id", util.UUIDToString(m.ID), "agent_id", util.UUIDToString(p.AgentID), "error", err)
+		_, _ = s.Queries.AddMeetingMessage(ctx, db.AddMeetingMessageParams{
+			MeetingID: m.ID, Round: round, AuthorType: "system",
+			Content: "An agent was unavailable and was skipped this turn.",
+		})
+		s.publish(protocol.EventMeetingMessage, m, nil)
+		s.advance(ctx, m, parts, round, turnIndex)
+	}
+}
+
+// enqueueSummary asks the first participant to summarize the debate. Recorded
+// as a turn with turn_index == turnIndexSummary so OnTaskTerminal finalizes.
+func (s *MeetingService) enqueueSummary(ctx context.Context, m db.Meeting, parts []db.MeetingParticipant) {
+	if len(parts) == 0 {
+		s.finishMeeting(ctx, m, "")
+		return
+	}
+	prompt := s.buildSummaryPrompt(ctx, m, parts)
+	if err := s.enqueueAgentTask(ctx, m, parts[0].AgentID, m.Rounds, turnIndexSummary, prompt); err != nil {
+		// No one to summarize — complete with an empty summary.
+		s.finishMeeting(ctx, m, "")
+	}
+}
+
+func (s *MeetingService) enqueueAgentTask(ctx context.Context, m db.Meeting, agentID pgtype.UUID, round, turnIndex int32, prompt string) error {
+	agent, err := s.Queries.GetAgent(ctx, agentID)
+	if err != nil {
+		return fmt.Errorf("load agent: %w", err)
+	}
+	if agent.ArchivedAt.Valid {
+		return fmt.Errorf("agent archived")
+	}
+	if !agent.RuntimeID.Valid {
+		return fmt.Errorf("agent has no runtime")
+	}
+	ctxJSON, err := json.Marshal(MeetingTurnContext{
+		Type:        MeetingTurnContextType,
+		Prompt:      prompt,
+		WorkspaceID: util.UUIDToString(m.WorkspaceID),
+		MeetingID:   util.UUIDToString(m.ID),
+	})
+	if err != nil {
+		return fmt.Errorf("marshal meeting context: %w", err)
+	}
+	task, err := s.Queries.CreateMeetingTask(ctx, db.CreateMeetingTaskParams{
+		AgentID:   agentID,
+		RuntimeID: agent.RuntimeID,
+		Priority:  priorityToInt("high"),
+		Context:   ctxJSON,
+	})
+	if err != nil {
+		return fmt.Errorf("create meeting task: %w", err)
+	}
+	if _, err := s.Queries.CreateMeetingTurn(ctx, db.CreateMeetingTurnParams{
+		MeetingID: m.ID,
+		TaskID:    task.ID,
+		AgentID:   agentID,
+		Round:     round,
+		TurnIndex: turnIndex,
+	}); err != nil {
+		return fmt.Errorf("create meeting turn: %w", err)
+	}
+	s.Tasks.NotifyTaskEnqueued(ctx, task)
+	return nil
+}
+
+// OnTaskTerminal advances a meeting when one of its debate-turn tasks finishes.
+// Wire it to task:completed (succeeded=true) and task:failed (succeeded=false).
+// No-op for tasks that aren't meeting turns.
+func (s *MeetingService) OnTaskTerminal(ctx context.Context, taskID pgtype.UUID, succeeded bool) {
+	turn, err := s.Queries.GetMeetingTurnByTask(ctx, taskID)
+	if err != nil {
+		return // not a meeting turn
+	}
+	if turn.Status != "pending" {
+		return // already handled (idempotent against duplicate events)
+	}
+	m, err := s.Queries.GetMeeting(ctx, turn.MeetingID)
+	if err != nil {
+		return
+	}
+	_ = s.Queries.UpdateMeetingTurnStatus(ctx, db.UpdateMeetingTurnStatusParams{ID: turn.ID, Status: statusOf(succeeded)})
+	if m.Status != "in_progress" {
+		return // meeting was cancelled / already finished
+	}
+
+	content := ""
+	if succeeded {
+		if task, err := s.Queries.GetAgentTask(ctx, taskID); err == nil {
+			content = extractTurnOutput(task.Result)
+		}
+	}
+
+	// Final summarization turn → finish the meeting.
+	if turn.TurnIndex == turnIndexSummary {
+		s.finishMeeting(ctx, m, content)
+		return
+	}
+
+	// Normal debate turn → record the contribution, then advance.
+	if content != "" {
+		_, _ = s.Queries.AddMeetingMessage(ctx, db.AddMeetingMessageParams{
+			MeetingID: m.ID, Round: turn.Round, AuthorType: "agent", AuthorID: turn.AgentID, Content: content,
+		})
+	} else {
+		_, _ = s.Queries.AddMeetingMessage(ctx, db.AddMeetingMessageParams{
+			MeetingID: m.ID, Round: turn.Round, AuthorType: "system",
+			Content: "An agent did not contribute this turn.",
+		})
+	}
+	s.publish(protocol.EventMeetingMessage, m, nil)
+
+	parts, err := s.Queries.ListMeetingParticipants(ctx, m.ID)
+	if err != nil {
+		return
+	}
+	s.advance(ctx, m, parts, turn.Round, turn.TurnIndex)
+}
+
+// advance moves to the next turn; wraps to the next round; summarizes after the
+// last round.
+func (s *MeetingService) advance(ctx context.Context, m db.Meeting, parts []db.MeetingParticipant, round, turnIndex int32) {
+	next := turnIndex + 1
+	r := round
+	if int(next) >= len(parts) {
+		next = 0
+		r++
+	}
+	if r > m.Rounds {
+		s.enqueueSummary(ctx, m, parts)
+		return
+	}
+	updated, err := s.Queries.UpdateMeetingProgress(ctx, db.UpdateMeetingProgressParams{
+		ID: m.ID, CurrentRound: r, CurrentTurn: next, Status: "in_progress",
+	})
+	if err != nil {
+		updated = m
+	}
+	s.enqueueTurn(ctx, updated, parts, r, next)
+}
+
+func (s *MeetingService) finishMeeting(ctx context.Context, m db.Meeting, summary string) {
+	if strings.TrimSpace(summary) == "" {
+		summary = "Meeting concluded."
+	}
+	completed, err := s.Queries.CompleteMeeting(ctx, db.CompleteMeetingParams{ID: m.ID, Summary: summary})
+	if err != nil {
+		slog.Error("complete meeting", "meeting_id", util.UUIDToString(m.ID), "error", err)
+		return
+	}
+	_, _ = s.Queries.AddMeetingMessage(ctx, db.AddMeetingMessageParams{
+		MeetingID: completed.ID, Round: completed.CurrentRound, AuthorType: "system",
+		Content: "Summary — " + summary,
+	})
+	s.publish(protocol.EventMeetingMessage, completed, nil)
+	s.publish(protocol.EventMeetingCompleted, completed, nil)
+}
+
+// buildTurnPrompt composes the full per-turn prompt: meeting framing, topic,
+// the transcript so far, and this agent's turn instruction.
+func (s *MeetingService) buildTurnPrompt(ctx context.Context, m db.Meeting, parts []db.MeetingParticipant, agentID pgtype.UUID, round int32) string {
+	names := s.participantNames(ctx, parts)
+	var b strings.Builder
+	you := names[util.UUIDToString(agentID)]
+	if you == "" {
+		you = "an agent"
+	}
+	fmt.Fprintf(&b, "You are %s, one of the agents in a team meeting (%s) with other AI agents.\n\n", you, meetingTypeLabel(m.Type))
+	fmt.Fprintf(&b, "Meeting: %s\n", m.Title)
+	if strings.TrimSpace(m.Topic) != "" {
+		fmt.Fprintf(&b, "Topic / agenda: %s\n", m.Topic)
+	}
+	roster := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if n := names[util.UUIDToString(p.AgentID)]; n != "" {
+			roster = append(roster, n)
+		}
+	}
+	if len(roster) > 0 {
+		fmt.Fprintf(&b, "Participants: %s\n", strings.Join(roster, ", "))
+	}
+	b.WriteString("\nTranscript so far:\n")
+	b.WriteString(s.renderTranscript(ctx, m, names))
+	fmt.Fprintf(&b, "\nIt is now your turn (round %d of %d). Contribute your view in a few sentences — react to what others said, add something new, raise a concern, or propose a next step. Don't repeat points already made. Reply with your contribution only, as plain prose.\n", round, m.Rounds)
+	return b.String()
+}
+
+func (s *MeetingService) buildSummaryPrompt(ctx context.Context, m db.Meeting, parts []db.MeetingParticipant) string {
+	names := s.participantNames(ctx, parts)
+	var b strings.Builder
+	fmt.Fprintf(&b, "The %s meeting \"%s\" has concluded.\n\n", meetingTypeLabel(m.Type), m.Title)
+	if strings.TrimSpace(m.Topic) != "" {
+		fmt.Fprintf(&b, "Topic / agenda: %s\n\n", m.Topic)
+	}
+	b.WriteString("Full transcript:\n")
+	b.WriteString(s.renderTranscript(ctx, m, names))
+	b.WriteString("\nWrite a concise summary of the discussion: the key points raised, any decisions reached, and a short list of concrete action items (with owners if named). Reply with the summary only, as plain prose.\n")
+	return b.String()
+}
+
+func (s *MeetingService) renderTranscript(ctx context.Context, m db.Meeting, names map[string]string) string {
+	msgs, err := s.Queries.ListMeetingMessages(ctx, m.ID)
+	if err != nil || len(msgs) == 0 {
+		return "(nothing said yet — you're opening the discussion)\n"
+	}
+	var b strings.Builder
+	for _, msg := range msgs {
+		switch msg.AuthorType {
+		case "agent":
+			name := names[util.UUIDToString(msg.AuthorID)]
+			if name == "" {
+				name = "Agent"
+			}
+			fmt.Fprintf(&b, "%s: %s\n", name, msg.Content)
+		case "member":
+			fmt.Fprintf(&b, "Facilitator: %s\n", msg.Content)
+		default:
+			fmt.Fprintf(&b, "(%s)\n", msg.Content)
+		}
+	}
+	return b.String()
+}
+
+func (s *MeetingService) participantNames(ctx context.Context, parts []db.MeetingParticipant) map[string]string {
+	names := make(map[string]string, len(parts))
+	for _, p := range parts {
+		if agent, err := s.Queries.GetAgent(ctx, p.AgentID); err == nil {
+			names[util.UUIDToString(p.AgentID)] = agent.Name
+		}
+	}
+	return names
+}
+
+func extractTurnOutput(result []byte) string {
+	if len(result) == 0 {
+		return ""
+	}
+	var payload protocol.TaskCompletedPayload
+	if err := json.Unmarshal(result, &payload); err != nil {
+		return ""
+	}
+	return strings.TrimSpace(util.UnescapeBackslashEscapes(payload.Output))
+}
+
+func statusOf(succeeded bool) string {
+	if succeeded {
+		return "done"
+	}
+	return "failed"
+}
+
+func meetingTypeLabel(t string) string {
+	switch t {
+	case "standup":
+		return "daily standup"
+	case "issue_discussion":
+		return "issue discussion"
+	case "planning":
+		return "planning"
+	case "retro":
+		return "retrospective"
+	default:
+		return "team"
+	}
 }
 
 // publish emits a lightweight meeting event. Per the project's realtime model,

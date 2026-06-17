@@ -465,6 +465,9 @@ func renderIssueContext(provider string, ctx TaskContextForEnv) string {
 	if ctx.QuickCreatePrompt != "" {
 		return renderQuickCreateContext(ctx)
 	}
+	if ctx.MeetingPrompt != "" {
+		return renderMeetingContext(ctx)
+	}
 
 	var b strings.Builder
 
@@ -505,6 +508,25 @@ func renderQuickCreateContext(ctx TaskContextForEnv) string {
 	b.WriteString("> ")
 	b.WriteString(ctx.QuickCreatePrompt)
 	b.WriteString("\n\n")
+	if len(ctx.AgentSkills) > 0 {
+		b.WriteString("## Agent Skills\n\n")
+		for _, skill := range ctx.AgentSkills {
+			fmt.Fprintf(&b, "- **%s**\n", skill.Name)
+		}
+		b.WriteString("\n")
+	}
+	return b.String()
+}
+
+// renderMeetingContext renders issue_context.md for meeting (debate-turn)
+// tasks. The full topic + transcript + turn instruction live in the per-turn
+// prompt (BuildPrompt → buildMeetingPrompt); this file is just a marker so a
+// resumed session still knows it's in a meeting and not assignment work.
+func renderMeetingContext(ctx TaskContextForEnv) string {
+	var b strings.Builder
+	b.WriteString("# Meeting\n\n")
+	b.WriteString("**Trigger:** Agent meeting (turn-based discussion)\n\n")
+	b.WriteString("Your turn's topic and the transcript so far are in the message you just received. Reply with your contribution as plain text — that text is your turn. Do not create issues, post comments, or change code.\n\n")
 	if len(ctx.AgentSkills) > 0 {
 		b.WriteString("## Agent Skills\n\n")
 		for _, skill := range ctx.AgentSkills {
