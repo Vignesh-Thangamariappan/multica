@@ -2,17 +2,19 @@
 
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Play, X, Send, Bot, Sparkles } from "lucide-react";
+import { ArrowLeft, Play, X, Send, Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import type { MeetingMessage } from "@multica/core/types";
+import type { Agent, MeetingMessage } from "@multica/core/types";
 import { api } from "@multica/core/api";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { useWorkspacePaths } from "@multica/core/paths";
 import { meetingDetailOptions, meetingKeys } from "@multica/core/meetings";
 import { agentListOptions } from "@multica/core/workspace/queries";
+import { resolvePublicFileUrl } from "@multica/core/workspace/avatar-url";
 import { Button } from "@multica/ui/components/ui/button";
 import { Input } from "@multica/ui/components/ui/input";
 import { Spinner } from "@multica/ui/components/ui/spinner";
+import { ActorAvatar } from "@multica/ui/components/common/actor-avatar";
 import { PageHeader } from "../../layout/page-header";
 import { useNavigation } from "../../navigation";
 import { MeetingStatusBadge, MeetingTypeBadge } from "./meeting-bits";
@@ -30,9 +32,9 @@ export function MeetingDetailPage({ meetingId }: MeetingDetailPageProps) {
   const { data: agents = [] } = useQuery(agentListOptions(wsId));
   const [busy, setBusy] = useState(false);
 
-  const agentNames = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const a of agents) m.set(a.id, a.name);
+  const agentsById = useMemo(() => {
+    const m = new Map<string, Agent>();
+    for (const a of agents) m.set(a.id, a);
     return m;
   }, [agents]);
 
@@ -122,7 +124,7 @@ export function MeetingDetailPage({ meetingId }: MeetingDetailPageProps) {
             </div>
           )}
 
-          <Transcript messages={meeting.messages} agentNames={agentNames} running={running} />
+          <Transcript messages={meeting.messages} agentsById={agentsById} running={running} />
         </div>
       </div>
 
@@ -135,11 +137,11 @@ export function MeetingDetailPage({ meetingId }: MeetingDetailPageProps) {
 
 function Transcript({
   messages,
-  agentNames,
+  agentsById,
   running,
 }: {
   messages: MeetingMessage[];
-  agentNames: Map<string, string>;
+  agentsById: Map<string, Agent>;
   running: boolean;
 }) {
   if (messages.length === 0) {
@@ -148,7 +150,7 @@ function Transcript({
   return (
     <div className="flex flex-col gap-3">
       {messages.map((msg) => (
-        <TranscriptRow key={msg.id} msg={msg} agentNames={agentNames} />
+        <TranscriptRow key={msg.id} msg={msg} agentsById={agentsById} />
       ))}
       {running && (
         <div className="flex items-center gap-2 py-1 pl-1 text-xs text-muted-foreground">
@@ -160,22 +162,32 @@ function Transcript({
   );
 }
 
-function TranscriptRow({ msg, agentNames }: { msg: MeetingMessage; agentNames: Map<string, string> }) {
+function TranscriptRow({ msg, agentsById }: { msg: MeetingMessage; agentsById: Map<string, Agent> }) {
   if (msg.author_type === "system") {
     return (
       <div className="py-1 text-center text-xs text-muted-foreground">{msg.content}</div>
     );
   }
   const isMember = msg.author_type === "member";
-  const name = isMember ? "You" : (msg.author_id && agentNames.get(msg.author_id)) || "Agent";
+  const agent = !isMember && msg.author_id ? agentsById.get(msg.author_id) : undefined;
+  const name = isMember ? "You" : agent?.name ?? "Agent";
   return (
     <div className="flex gap-3">
-      <div
-        className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${
-          isMember ? "bg-muted text-foreground" : "bg-brand/15 text-brand"
-        }`}
-      >
-        {isMember ? name[0]?.toUpperCase() : <Bot className="h-3.5 w-3.5" />}
+      <div className="mt-0.5 shrink-0">
+        {isMember ? (
+          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-[11px] font-semibold text-foreground">
+            {name[0]?.toUpperCase()}
+          </div>
+        ) : (
+          <ActorAvatar
+            name={name}
+            initials={name.slice(0, 2).toUpperCase()}
+            avatarUrl={resolvePublicFileUrl(agent?.avatar_url ?? null)}
+            isAgent
+            size={28}
+            className="rounded-full"
+          />
+        )}
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
