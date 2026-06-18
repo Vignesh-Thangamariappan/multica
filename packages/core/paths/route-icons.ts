@@ -34,6 +34,7 @@ export type RouteIconName =
   | "BookOpenText"
   | "Library"
   | "Building2"
+  | "MessagesSquare"
   | "Settings"
   | "File"
   | "FileText"
@@ -54,6 +55,7 @@ export type NavLabelKey =
   | "autopilots"
   | "agents"
   | "office"
+  | "meetings"
   | "squads"
   | "usage"
   | "runtimes"
@@ -71,6 +73,7 @@ export type WorkspacePageKey =
   | "autopilots"
   | "agents"
   | "office"
+  | "meetings"
   | "squads"
   | "usage"
   | "runtimes"
@@ -99,6 +102,7 @@ export const WORKSPACE_PAGES: Record<WorkspacePageKey, WorkspacePage> = {
   projects: { segment: "projects", icon: "FolderKanban", navKey: "projects" },
   autopilots: { segment: "autopilots", icon: "Zap", navKey: "autopilots" },
   agents: { segment: "agents", icon: "Bot", navKey: "agents" },
+  meetings: { segment: "meetings", icon: "MessagesSquare", navKey: "meetings" },
   office: { segment: "office", icon: "Building2", navKey: "office" },
   squads: { segment: "squads", icon: "Users", navKey: "squads" },
   usage: { segment: "usage", icon: "BarChart3", navKey: "usage" },
