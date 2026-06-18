@@ -213,7 +213,10 @@ func (h *Handler) ListMeetings(w http.ResponseWriter, r *http.Request) {
 	}
 	resp := make([]meetingResponse, 0, len(meetings))
 	for _, m := range meetings {
-		resp = append(resp, meetingToResponse(m, nil, nil))
+		// Include participants so the list can show the count. Transcript
+		// (messages) is omitted from the list — it's only loaded on detail.
+		parts, _ := h.Queries.ListMeetingParticipants(r.Context(), m.ID)
+		resp = append(resp, meetingToResponse(m, parts, nil))
 	}
 	writeJSON(w, http.StatusOK, resp)
 }
