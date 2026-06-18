@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Play, X, Send, Sparkles } from "lucide-react";
+import { ArrowLeft, Play, X, Send, Sparkles, ListTodo } from "lucide-react";
 import { toast } from "sonner";
 import type { Agent, MeetingMessage } from "@multica/core/types";
 import { api } from "@multica/core/api";
@@ -16,6 +16,7 @@ import { Input } from "@multica/ui/components/ui/input";
 import { Spinner } from "@multica/ui/components/ui/spinner";
 import { ActorAvatar } from "@multica/ui/components/common/actor-avatar";
 import { Markdown } from "@multica/views/common/markdown";
+import { CreateTasksDialog, parseActionItems } from "./create-tasks-dialog";
 import { PageHeader } from "../../layout/page-header";
 import { useNavigation } from "../../navigation";
 import { MeetingStatusBadge, MeetingTypeBadge } from "./meeting-bits";
@@ -32,6 +33,7 @@ export function MeetingDetailPage({ meetingId }: MeetingDetailPageProps) {
   const { data: meeting, isLoading } = useQuery(meetingDetailOptions(wsId, meetingId));
   const { data: agents = [] } = useQuery(agentListOptions(wsId));
   const [busy, setBusy] = useState(false);
+  const [tasksOpen, setTasksOpen] = useState(false);
 
   const agentsById = useMemo(() => {
     const m = new Map<string, Agent>();
@@ -117,9 +119,22 @@ export function MeetingDetailPage({ meetingId }: MeetingDetailPageProps) {
 
           {meeting.summary && meeting.status === "completed" && (
             <div className="mb-4 rounded-lg border border-success/30 bg-success/10 px-4 py-3">
-              <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-success">
-                <Sparkles className="h-3.5 w-3.5" />
-                Outcome
+              <div className="mb-2 flex items-center gap-2">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-success">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Outcome
+                </div>
+                {parseActionItems(meeting.summary).length > 0 && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="ml-auto h-7"
+                    onClick={() => setTasksOpen(true)}
+                  >
+                    <ListTodo className="h-3.5 w-3.5" />
+                    Create tasks
+                  </Button>
+                )}
               </div>
               <div className="prose prose-sm max-w-none text-sm">
                 <Markdown attachments={[]}>{meeting.summary}</Markdown>
@@ -134,6 +149,8 @@ export function MeetingDetailPage({ meetingId }: MeetingDetailPageProps) {
       {(scheduled || running) && (
         <ChimeIn meetingId={meetingId} onSent={refresh} />
       )}
+
+      <CreateTasksDialog meeting={meeting} open={tasksOpen} onOpenChange={setTasksOpen} />
     </div>
   );
 }
