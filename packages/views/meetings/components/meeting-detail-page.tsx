@@ -15,6 +15,7 @@ import { Button } from "@multica/ui/components/ui/button";
 import { Input } from "@multica/ui/components/ui/input";
 import { Spinner } from "@multica/ui/components/ui/spinner";
 import { ActorAvatar } from "@multica/ui/components/common/actor-avatar";
+import { Markdown } from "@multica/views/common/markdown";
 import { PageHeader } from "../../layout/page-header";
 import { useNavigation } from "../../navigation";
 import { MeetingStatusBadge, MeetingTypeBadge } from "./meeting-bits";
@@ -116,11 +117,13 @@ export function MeetingDetailPage({ meetingId }: MeetingDetailPageProps) {
 
           {meeting.summary && meeting.status === "completed" && (
             <div className="mb-4 rounded-lg border border-success/30 bg-success/10 px-4 py-3">
-              <div className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-success">
+              <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-success">
                 <Sparkles className="h-3.5 w-3.5" />
-                Summary
+                Outcome
               </div>
-              <p className="whitespace-pre-wrap text-sm">{meeting.summary}</p>
+              <div className="prose prose-sm max-w-none text-sm">
+                <Markdown attachments={[]}>{meeting.summary}</Markdown>
+              </div>
             </div>
           )}
 
