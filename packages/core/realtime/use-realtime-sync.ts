@@ -13,6 +13,7 @@ import { issueKeys } from "../issues/queries";
 import { projectKeys } from "../projects/queries";
 import { pinKeys } from "../pins/queries";
 import { autopilotKeys } from "../autopilots/queries";
+import { meetingKeys } from "../meetings/queries";
 import { runtimeKeys } from "../runtimes/queries";
 import { labelKeys } from "../labels/queries";
 import {
@@ -909,6 +910,24 @@ export function useRealtimeSync(
       invalidatePendingAggregate();
     });
 
+    // Meetings — every meeting:* event refreshes the list and (when the
+    // payload names one) the specific meeting's detail, so the live transcript
+    // streams turns in as the debate advances. Payload is { meeting_id, status }.
+    const onMeetingEvent = (p: unknown) => {
+      const wsId = getCurrentWsId();
+      if (!wsId) return;
+      qc.invalidateQueries({ queryKey: meetingKeys.list(wsId) });
+      const meetingId = (p as { meeting_id?: string } | null)?.meeting_id;
+      if (meetingId) {
+        qc.invalidateQueries({ queryKey: meetingKeys.detail(wsId, meetingId) });
+      }
+    };
+    const unsubMeetingCreated = ws.on("meeting:created", onMeetingEvent);
+    const unsubMeetingStarted = ws.on("meeting:started", onMeetingEvent);
+    const unsubMeetingMessage = ws.on("meeting:message", onMeetingEvent);
+    const unsubMeetingUpdated = ws.on("meeting:updated", onMeetingEvent);
+    const unsubMeetingCompleted = ws.on("meeting:completed", onMeetingEvent);
+
     const unsubChatSessionRead = ws.on("chat:session_read", (p) => {
       const payload = p as { chat_session_id: string };
       chatWsLogger.info("chat:session_read (global)", payload);
@@ -1004,6 +1023,11 @@ export function useRealtimeSync(
       unsubTaskCancelled();
       unsubTaskCompleted();
       unsubTaskFailed();
+      unsubMeetingCreated();
+      unsubMeetingStarted();
+      unsubMeetingMessage();
+      unsubMeetingUpdated();
+      unsubMeetingCompleted();
       unsubChatSessionRead();
       unsubChatSessionDeleted();
       unsubChatSessionUpdated();

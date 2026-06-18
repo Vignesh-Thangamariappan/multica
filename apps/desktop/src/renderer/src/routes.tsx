@@ -24,6 +24,8 @@ import { SkillsPage } from "@multica/views/skills";
 import { DesktopRuntimesPage } from "./components/desktop-runtimes-page";
 import { DesktopAgentsPage } from "./components/desktop-agents-page";
 import { AgentsOfficePage } from "@multica/views/agents";
+import { MeetingsPage } from "@multica/views/meetings";
+import { MeetingDetailPage } from "./pages/meeting-detail-page";
 import { SquadsPage, SquadDetailPage as SquadDetailPageView } from "@multica/views/squads/components";
 import { InboxPage } from "@multica/views/inbox";
 import { SettingsPage } from "@multica/views/settings";
@@ -178,6 +180,12 @@ export const appRoutes: RouteObject[] = [
             handle: { title: "Agent" },
           },
           { path: "office", element: <AgentsOfficePage />, handle: { title: "Office" } },
+          { path: "meetings", element: <MeetingsPage />, handle: { title: "Meetings" } },
+          {
+            path: "meetings/:id",
+            element: <MeetingDetailPage />,
+            handle: { title: "Meeting" },
+          },
           {
             path: "members/:id",
             element: <MemberDetailPage />,

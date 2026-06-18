@@ -20,6 +20,7 @@ import type {
   CreateBillingPortalSessionResponse,
   GroupedIssuesResponse,
   ListIssuesResponse,
+  Meeting,
   ListWebhookDeliveriesResponse,
   Squad,
   TimelineEntry,
@@ -193,6 +194,64 @@ export const CommentSchema = z.object({
 }).loose();
 
 export const CommentsListSchema = z.array(CommentSchema);
+
+// ─── Meetings ────────────────────────────────────────────────────────────────
+// Lenient (enum-as-string, .loose()) per the API Response Compatibility rule:
+// an older app must keep rendering when the backend adds a meeting type/status.
+const MeetingParticipantSchema = z.object({
+  id: z.string(),
+  agent_id: z.string(),
+  speaking_order: z.number().default(0),
+}).loose();
+
+const MeetingMessageSchema = z.object({
+  id: z.string(),
+  seq: z.number().default(0),
+  round: z.number().default(0),
+  author_type: z.string(),
+  author_id: z.string().optional(),
+  content: z.string().default(""),
+  created_at: z.string().default(""),
+}).loose();
+
+export const MeetingSchema = z.object({
+  id: z.string(),
+  workspace_id: z.string(),
+  title: z.string().default(""),
+  type: z.string().default("general"),
+  topic: z.string().default(""),
+  issue_id: z.string().optional(),
+  status: z.string().default("scheduled"),
+  rounds: z.number().default(0),
+  current_round: z.number().default(0),
+  current_turn: z.number().default(0),
+  summary: z.string().default(""),
+  created_at: z.string().default(""),
+  started_at: z.string().optional(),
+  completed_at: z.string().optional(),
+  participants: z.array(MeetingParticipantSchema).default([]),
+  messages: z.array(MeetingMessageSchema).default([]),
+}).loose();
+
+export const MeetingListSchema = z.array(MeetingSchema);
+
+export const EMPTY_MEETING: Meeting = {
+  id: "",
+  workspace_id: "",
+  title: "",
+  type: "general",
+  topic: "",
+  status: "scheduled",
+  rounds: 0,
+  current_round: 0,
+  current_turn: 0,
+  summary: "",
+  created_at: "",
+  participants: [],
+  messages: [],
+};
+
+export const EMPTY_MEETING_LIST: Meeting[] = [];
 
 // Metadata is primitive-only by API/DB contract. Stay lenient on shape:
 // unknown keys land as `unknown` to a caller, but the field itself defaults

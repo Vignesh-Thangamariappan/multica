@@ -20,6 +20,7 @@ import {
   ListTodo,
   Bot,
   Building2,
+  MessagesSquare,
   Monitor,
   ChevronDown,
   ChevronRight,
@@ -114,6 +115,7 @@ type NavKey =
   | "autopilots"
   | "agents"
   | "office"
+  | "meetings"
   | "squads"
   | "usage"
   | "runtimes"
@@ -130,6 +132,7 @@ type NavLabelKey =
   | "autopilots"
   | "agents"
   | "office"
+  | "meetings"
   | "squads"
   | "usage"
   | "runtimes"
@@ -148,6 +151,7 @@ const workspaceNav: { key: NavKey; labelKey: NavLabelKey; icon: typeof Inbox }[]
   { key: "autopilots", labelKey: "autopilots", icon: Zap },
   { key: "agents", labelKey: "agents", icon: Bot },
   { key: "office", labelKey: "office", icon: Building2 },
+  { key: "meetings", labelKey: "meetings", icon: MessagesSquare },
   { key: "squads", labelKey: "squads", icon: Users },
   { key: "usage", labelKey: "usage", icon: BarChart3 },
 ];

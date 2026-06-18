@@ -171,3 +171,12 @@ export type {
   BillingCheckoutSessionStatus,
   CreateBillingPortalSessionResponse,
 } from "./billing";
+export type {
+  Meeting,
+  MeetingType,
+  MeetingStatus,
+  MeetingAuthorType,
+  MeetingParticipant,
+  MeetingMessage,
+  CreateMeetingRequest,
+} from "./meeting";

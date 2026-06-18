@@ -125,6 +125,8 @@ import type {
   CreateBillingCheckoutSessionResponse,
   BillingCheckoutSessionStatus,
   CreateBillingPortalSessionResponse,
+  Meeting,
+  CreateMeetingRequest,
 } from "../types";
 import type { OnboardingCompletionPath } from "../onboarding/types";
 import type {
@@ -207,6 +209,10 @@ import {
   EMPTY_CREATE_BILLING_CHECKOUT_SESSION_RESPONSE,
   EMPTY_BILLING_CHECKOUT_SESSION_STATUS,
   EMPTY_CREATE_BILLING_PORTAL_SESSION_RESPONSE,
+  MeetingSchema,
+  MeetingListSchema,
+  EMPTY_MEETING,
+  EMPTY_MEETING_LIST,
 } from "./schemas";
 
 /** Identifies the calling client to the server.
@@ -2039,6 +2045,36 @@ export class ApiClient {
 
   async getAutopilot(id: string): Promise<GetAutopilotResponse> {
     return this.fetch(`/api/autopilots/${id}`);
+  }
+
+  // ─── Meetings ──────────────────────────────────────────────────────────
+  async listMeetings(): Promise<Meeting[]> {
+    const raw = await this.fetch<unknown>("/api/meetings");
+    return parseWithFallback(raw, MeetingListSchema, EMPTY_MEETING_LIST, { endpoint: "listMeetings" });
+  }
+
+  async getMeeting(id: string): Promise<Meeting> {
+    const raw = await this.fetch<unknown>(`/api/meetings/${id}`);
+    return parseWithFallback(raw, MeetingSchema, EMPTY_MEETING, { endpoint: "getMeeting" });
+  }
+
+  async createMeeting(data: CreateMeetingRequest): Promise<Meeting> {
+    const raw = await this.fetch<unknown>("/api/meetings", { method: "POST", body: JSON.stringify(data) });
+    return parseWithFallback(raw, MeetingSchema, EMPTY_MEETING, { endpoint: "createMeeting" });
+  }
+
+  async startMeeting(id: string): Promise<Meeting> {
+    const raw = await this.fetch<unknown>(`/api/meetings/${id}/start`, { method: "POST" });
+    return parseWithFallback(raw, MeetingSchema, EMPTY_MEETING, { endpoint: "startMeeting" });
+  }
+
+  async cancelMeeting(id: string): Promise<Meeting> {
+    const raw = await this.fetch<unknown>(`/api/meetings/${id}/cancel`, { method: "POST" });
+    return parseWithFallback(raw, MeetingSchema, EMPTY_MEETING, { endpoint: "cancelMeeting" });
+  }
+
+  async addMeetingMessage(id: string, content: string): Promise<void> {
+    await this.fetch(`/api/meetings/${id}/messages`, { method: "POST", body: JSON.stringify({ content }) });
   }
 
   async createAutopilot(data: CreateAutopilotRequest): Promise<Autopilot> {
