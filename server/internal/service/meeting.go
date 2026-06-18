@@ -308,9 +308,12 @@ func (s *MeetingService) finishMeeting(ctx context.Context, m db.Meeting, summar
 		slog.Error("complete meeting", "meeting_id", util.UUIDToString(m.ID), "error", err)
 		return
 	}
+	// Short transcript end-cap only — the full structured outcome lives in
+	// meeting.summary and renders in the Outcome card (posting the whole thing
+	// as a system message would dump a wall of text mid-transcript).
 	_, _ = s.Queries.AddMeetingMessage(ctx, db.AddMeetingMessageParams{
 		MeetingID: completed.ID, Round: completed.CurrentRound, AuthorType: "system",
-		Content: "Summary — " + summary,
+		Content: "Meeting concluded — outcome recorded.",
 	})
 	s.publish(protocol.EventMeetingMessage, completed, nil)
 	s.publish(protocol.EventMeetingCompleted, completed, nil)
@@ -354,7 +357,11 @@ func (s *MeetingService) buildSummaryPrompt(ctx context.Context, m db.Meeting, p
 	}
 	b.WriteString("Full transcript:\n")
 	b.WriteString(s.renderTranscript(ctx, m, names))
-	b.WriteString("\nWrite a concise summary of the discussion: the key points raised, any decisions reached, and a short list of concrete action items (with owners if named). Reply with the summary only, as plain prose.\n")
+	b.WriteString("\nYou are the facilitator. Capture the OUTCOME of this meeting as Markdown with exactly these three sections, each a short, scannable bullet list — concrete and concise, no preamble and no recap of who said what:\n\n")
+	b.WriteString("## Decisions\n- the concrete decisions the group actually reached\n\n")
+	b.WriteString("## Action items\n- **Owner** — the specific next step they committed to (name the owner from the participants when one was assigned)\n\n")
+	b.WriteString("## Learnings\n- the key takeaways or insights from this discussion that are worth remembering next time\n\n")
+	b.WriteString("If a section genuinely has nothing real to record, put a single \"- None\" under it. Reply with only these three sections.\n")
 	return b.String()
 }
 
