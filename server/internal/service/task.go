@@ -7392,6 +7392,16 @@ func (s *TaskService) ResolveTaskWorkspaceIDChecked(ctx context.Context, task db
 	if qc, ok := s.parseQuickCreateContext(task); ok {
 		return qc.WorkspaceID, nil
 	}
+	// Meeting (debate-turn) tasks also have no issue / chat / autopilot link —
+	// the workspace lives in the context JSONB. Without this, the daemon's
+	// /start, /complete and /fail calls 404, so a meeting turn gets stuck in
+	// `dispatched` and the debate never advances.
+	if task.Context != nil {
+		var mc MeetingTurnContext
+		if json.Unmarshal(task.Context, &mc) == nil && mc.Type == MeetingTurnContextType && mc.WorkspaceID != "" {
+			return mc.WorkspaceID, nil
+		}
+	}
 	if lookupErr != nil {
 		return "", fmt.Errorf("resolve task workspace: %w", lookupErr)
 	}
