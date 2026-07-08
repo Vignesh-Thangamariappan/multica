@@ -1334,7 +1334,7 @@ export const IssueSchema = z.object({
   // Older backends predate `stage`; default to null so a missing field parses
   // cleanly into the non-optional Issue.stage (number | null).
   stage: z.number().nullable().default(null),
-  start_date: z.string().nullable(),
+  start_date: z.string().nullable().optional(),
   due_date: z.string().nullable(),
   metadata: IssueMetadataSchema,
   // Older backends predate custom properties; default {} so consumers never
