@@ -86,10 +86,12 @@ var notifTypeToGroup = map[string]string{
 	"priority_changed":   "updates",
 	"start_date_changed": "updates",
 	"due_date_changed":   "updates",
-	"task_completed":     "agent_activity",
-	"task_failed":        "agent_activity",
-	"agent_blocked":      "agent_activity",
-	"agent_completed":    "agent_activity",
+	"task_completed":      "agent_activity",
+	"task_failed":         "agent_activity",
+	"agent_blocked":       "agent_activity",
+	"agent_completed":     "agent_activity",
+	"autopilot_completed": "agent_activity",
+	"autopilot_failed":    "agent_activity",
 }
 
 // isNotifMuted returns true if the given notification type is muted for a user
@@ -543,13 +545,17 @@ func notifyMentionedMembers(
 func registerNotificationListeners(bus *events.Bus, queries *db.Queries) {
 	ctx := context.Background()
 
-	// issue:created — Direct notification to assignee if assignee != actor
+	// issue:created — Direct notification to assignee if assignee != actor.
+	// Issues from the HTTP handler carry a handler.IssueResponse struct;
+	// autopilot-created issues carry a map[string]any (see service/autopilot.go
+	// → issueToMap). extractIssueFields normalizes both — a bare struct cast
+	// would silently drop every autopilot-created issue.
 	bus.Subscribe(protocol.EventIssueCreated, func(e events.Event) {
 		payload, ok := e.Payload.(map[string]any)
 		if !ok {
 			return
 		}
-		issue, ok := payload["issue"].(handler.IssueResponse)
+		issue, ok := extractIssueFields(payload["issue"])
 		if !ok {
 			return
 		}
@@ -917,6 +923,132 @@ func registerNotificationListeners(bus *events.Bus, queries *db.Queries) {
 			issue.Title, "",
 			emptyDetails)
 	})
+
+	// autopilot:run_done — notify the autopilot's owner when a run reaches a
+	// terminal outcome. This is the ONLY inbox signal for run_only autopilots
+	// (which never create an issue) and the cross-mode completion signal for
+	// create_issue autopilots, whose issue is created + assigned to an agent
+	// and so has no human subscriber on the normal notification path. "skipped"
+	// runs (offline-at-dispatch admission misses) are intentionally silent —
+	// they are operational noise, not work the owner asked for. The run is
+	// only ever published as terminal once (GetAutopilotRunByIssue matches
+	// active runs only), so no de-duplication is needed here.
+	bus.Subscribe(protocol.EventAutopilotRunDone, func(e events.Event) {
+		payload, ok := e.Payload.(map[string]any)
+		if !ok {
+			return
+		}
+		status, _ := payload["status"].(string)
+		if status != "completed" && status != "failed" {
+			return
+		}
+		runID, _ := payload["run_id"].(string)
+		if runID == "" {
+			return
+		}
+		notifyAutopilotRunDone(ctx, queries, bus, runID, status)
+	})
+}
+
+// notifyAutopilotRunDone creates an inbox item for the autopilot's owner when a
+// run completes or fails, and publishes inbox:new so connected clients show the
+// item live (and fire a native OS notification when unfocused). When the run
+// created an issue (create_issue mode) the item links to it so clicking
+// navigates there; run_only runs leave issue_id null. Honors the recipient's
+// "agent_activity" notification preference.
+func notifyAutopilotRunDone(
+	ctx context.Context,
+	queries *db.Queries,
+	bus *events.Bus,
+	runID string,
+	status string,
+) {
+	run, err := queries.GetAutopilotRun(ctx, parseUUID(runID))
+	if err != nil {
+		slog.Error("autopilot run_done notification: failed to load run",
+			"run_id", runID, "error", err)
+		return
+	}
+	autopilot, err := queries.GetAutopilot(ctx, run.AutopilotID)
+	if err != nil {
+		slog.Error("autopilot run_done notification: failed to load autopilot",
+			"autopilot_id", util.UUIDToString(run.AutopilotID), "error", err)
+		return
+	}
+
+	recipients := resolveAutopilotOwnerRecipients(ctx, queries, autopilot)
+	if len(recipients) == 0 {
+		return
+	}
+
+	var notifType, severity, title, body string
+	if status == "failed" {
+		notifType = "autopilot_failed"
+		severity = "action_required"
+		title = "Autopilot failed: " + autopilot.Title
+		body = run.FailureReason.String
+	} else {
+		notifType = "autopilot_completed"
+		severity = "info"
+		title = "Autopilot completed: " + autopilot.Title
+	}
+
+	details, _ := json.Marshal(map[string]any{
+		"autopilot_id":    util.UUIDToString(autopilot.ID),
+		"autopilot_title": autopilot.Title,
+		"run_id":          util.UUIDToString(run.ID),
+		"status":          status,
+	})
+
+	workspaceID := util.UUIDToString(autopilot.WorkspaceID)
+
+	emitted := make(map[string]bool, len(recipients))
+	for _, r := range recipients {
+		key := r.Type + ":" + util.UUIDToString(r.ID)
+		if emitted[key] {
+			continue
+		}
+		emitted[key] = true
+
+		// Honor the recipient's agent_activity preference for member inboxes.
+		if r.Type == "member" {
+			rid := util.UUIDToString(r.ID)
+			if prefs := loadUserPrefs(ctx, queries, workspaceID, []string{rid}); prefs != nil {
+				if p, ok := prefs[rid]; ok && isNotifMuted(p, notifType) {
+					continue
+				}
+			}
+		}
+
+		item, err := queries.CreateInboxItem(ctx, db.CreateInboxItemParams{
+			WorkspaceID:   autopilot.WorkspaceID,
+			RecipientType: r.Type,
+			RecipientID:   r.ID,
+			Type:          notifType,
+			Severity:      severity,
+			IssueID:       run.IssueID, // null for run_only autopilots
+			Title:         title,
+			Body:          util.StrToText(body),
+			ActorType:     util.StrToText("system"),
+			ActorID:       pgtype.UUID{},
+			Details:       details,
+		})
+		if err != nil {
+			slog.Error("autopilot run_done notification: inbox write failed",
+				"recipient_type", r.Type,
+				"recipient_id", util.UUIDToString(r.ID),
+				"error", err)
+			continue
+		}
+
+		bus.Publish(events.Event{
+			Type:        protocol.EventInboxNew,
+			WorkspaceID: workspaceID,
+			ActorType:   "system",
+			ActorID:     "",
+			Payload:     map[string]any{"item": inboxItemToResponse(item)},
+		})
+	}
 }
 
 // inboxItemToResponse converts a db.InboxItem into a map suitable for

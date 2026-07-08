@@ -44,7 +44,9 @@
     "agent_completed": "Agent completed",
     "reaction_added": "Reacted",
     "quick_create_done": "Created with agent",
-    "quick_create_failed": "Create with agent failed"
+    "quick_create_failed": "Create with agent failed",
+    "autopilot_completed": "Autopilot completed",
+    "autopilot_failed": "Autopilot failed"
   },
   "labels": {
     "set_status_to": "Set status to",
