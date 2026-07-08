@@ -217,7 +217,8 @@ type TaskContextForEnv struct {
 	// ConnectedApps lists per-run external app capabilities mounted through
 	// MCP overlays. Rendered briefly so the agent can map app names such as
 	// Notion to the actual MCP server name (`composio`).
-	ConnectedApps []runtimeapps.ConnectedApp
+	ConnectedApps      []runtimeapps.ConnectedApp
+	WorkspaceKnowledge []string // active knowledge entries to inject into system prompt
 	// RequestingUserName + RequestingUserProfileDescription describe the
 	// human the agent is acting on behalf of. v1 sources them from the
 	// runtime owner (the user who registered the daemon). Rendered into the
@@ -233,6 +234,14 @@ type TaskContextForEnv struct {
 	InitiatorID    string
 	InitiatorName  string
 	InitiatorEmail string
+}
+
+// AttachmentContextForEnv is the minimal attachment metadata needed for
+// capability derivation. The agent fetches full metadata through the CLI.
+type AttachmentContextForEnv struct {
+	ID          string
+	Filename    string
+	ContentType string
 }
 
 // SkillContextForEnv represents a skill to be written into the execution environment.

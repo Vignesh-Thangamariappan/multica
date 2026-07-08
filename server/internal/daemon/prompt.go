@@ -229,6 +229,9 @@ func buildPromptBody(task Task, provider string) string {
 	if task.ChatSessionID != "" {
 		return buildChatPrompt(task)
 	}
+	if task.RetryCount > 0 {
+		return buildRetryPrompt(task)
+	}
 	if task.TriggerCommentID != "" {
 		return buildCommentPrompt(task, provider)
 	}
@@ -247,12 +250,24 @@ func buildPromptBody(task Task, provider string) string {
 		b.WriteString("You were handed this issue with a handoff note. Treat it as the assigner's scoping instruction for this run; follow it before doing anything broader, and do not reply to it as if it were a comment:\n\n")
 		fmt.Fprintf(&b, "> %s\n\n", task.HandoffNote)
 	}
-	fmt.Fprintf(&b, "Start by running `multica issue get %s --output json` to understand your task, then complete it.\n", task.IssueID)
+	fmt.Fprintf(&b, "Start by running `rtk multica issue get %s --output json` to understand your task, then complete it.\n", task.IssueID)
 	// Workflow step 2 owns the catch-up rule for every issue turn; this line
 	// only hands over the commands. It used to add "(assignment-triggered tasks
 	// treat the read as mandatory)", which read as if comment-triggered turns
 	// did not (MUL-6984).
-	fmt.Fprintf(&b, "For comment history, workflow step 2 applies. Scan the threads first with `multica issue comment list %s --roots-only --summary --compact --output json`, then expand only what matters with `--thread <thread-id> --tail 30`. For `--since` incremental polling, pagination, and folding, see `multica issue comment list --help`.\n", task.IssueID)
+	fmt.Fprintf(&b, "For comment history, workflow step 2 applies. Scan the threads first with `rtk multica issue comment list %s --roots-only --summary --compact --output json`, then expand only what matters with `--thread <thread-id> --tail 30`. For `--since` incremental polling, pagination, and folding, see `rtk multica issue comment list --help`.\n", task.IssueID)
+	return b.String()
+}
+
+// buildRetryPrompt constructs a self-correction prompt when a previous attempt failed.
+func buildRetryPrompt(task Task) string {
+	var b strings.Builder
+	b.WriteString("You are running as a local coding agent for a Multica workspace.\n\n")
+	fmt.Fprintf(&b, "Your assigned issue ID is: %s\n\n", task.IssueID)
+	b.WriteString("Your previous attempt on this task failed. Here is the error:\n\n")
+	fmt.Fprintf(&b, "```\n%s\n```\n\n", task.RetryError)
+	b.WriteString("Reflect on what went wrong, correct your approach, and try again.\n")
+	fmt.Fprintf(&b, "Run `rtk multica issue get %s --output json` to review the task, then complete it successfully.\n", task.IssueID)
 	return b.String()
 }
 

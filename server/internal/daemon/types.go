@@ -177,7 +177,9 @@ type Task struct {
 	// agent never sees the daemon's own (often workspace-owner) credential.
 	// Empty or non-task-scoped values are fatal for writable agent tasks; the
 	// daemon must not fall back to its own token. See MUL-3292.
-	AuthToken string `json:"auth_token,omitempty"`
+	AuthToken  string `json:"auth_token,omitempty"`
+	RetryCount int    `json:"-"` // in-process retry counter (not persisted)
+	RetryError string `json:"-"` // error from the previous failed attempt
 }
 
 // ChatAttachmentMeta is the structured attachment metadata the daemon
