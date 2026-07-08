@@ -199,7 +199,7 @@ func emitAutopilotPausedNotifications(
 	cfg failureMonitorConfig,
 	failPct float64,
 ) {
-	recipients := resolveAutopilotPausedRecipients(ctx, queries, autopilot)
+	recipients := resolveAutopilotOwnerRecipients(ctx, queries, autopilot)
 	if len(recipients) == 0 {
 		return
 	}
@@ -265,19 +265,25 @@ func emitAutopilotPausedNotifications(
 	}
 }
 
-// pausedRecipient identifies a single inbox_item recipient.
-type pausedRecipient struct {
+// autopilotRecipient identifies a single inbox_item recipient.
+type autopilotRecipient struct {
 	Type string // "member" or "agent"
 	ID   pgtype.UUID
 }
 
-func resolveAutopilotPausedRecipients(
+// resolveAutopilotOwnerRecipients resolves the human who should receive
+// autopilot-lifecycle notifications (paused, run completed, run failed). A
+// member-created autopilot notifies that member directly; an agent-created
+// autopilot resolves to the agent's human owner so the alert lands somewhere
+// actionable. If no human can be resolved, it returns nil and the caller
+// skips notifying rather than pinging an agent that can't act on it.
+func resolveAutopilotOwnerRecipients(
 	ctx context.Context,
 	queries *db.Queries,
 	autopilot db.Autopilot,
-) []pausedRecipient {
+) []autopilotRecipient {
 	if autopilot.CreatedByType == "member" {
-		return []pausedRecipient{{Type: "member", ID: autopilot.CreatedByID}}
+		return []autopilotRecipient{{Type: "member", ID: autopilot.CreatedByID}}
 	}
 
 	// Creator is an agent — find the agent's human owner so the alert lands
@@ -285,7 +291,7 @@ func resolveAutopilotPausedRecipients(
 	// rather than spam an agent that can't act on it.
 	agent, err := queries.GetAgent(ctx, autopilot.CreatedByID)
 	if err != nil {
-		slog.Debug("autopilot failure monitor: failed to load creator agent",
+		slog.Debug("autopilot notifications: failed to load creator agent",
 			"agent_id", util.UUIDToString(autopilot.CreatedByID),
 			"error", err,
 		)
@@ -302,7 +308,7 @@ func resolveAutopilotPausedRecipients(
 	if err != nil {
 		return nil
 	}
-	return []pausedRecipient{{Type: "member", ID: member.UserID}}
+	return []autopilotRecipient{{Type: "member", ID: member.UserID}}
 }
 
 // autopilotEventPayload builds the minimal payload shape consumed by
