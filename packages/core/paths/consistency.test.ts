@@ -8,7 +8,6 @@ import { RESERVED_SLUGS } from "./reserved-slugs";
 // we hardcode the expected list and assert paths.workspace produces the same
 // keys. If you change either, BOTH need to be updated — the test catches drift.
 describe("paths.workspace() shape", () => {
-
   it("each parameterless route emits /{slug}/{segment}", () => {
     const ws = paths.workspace("acme");
     // Check that none of the parameterless paths embed a leaked literal and
@@ -27,6 +26,7 @@ describe("paths.workspace() shape", () => {
       ["inbox", "inbox"],
       ["myIssues", "my-issues"],
       ["runtimes", "runtimes"],
+      ["knowledge", "knowledge"],
       ["skills", "skills"],
       ["squads", "squads"],
       ["settings", "settings"],

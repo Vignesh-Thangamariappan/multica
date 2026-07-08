@@ -4,6 +4,7 @@ import type {
   AgentBuilderRuntimeSwitch,
   AgentBuilderSession,
   AgentBuilderSessionSummary,
+  WorkspaceKnowledge,
   Attachment,
   AutopilotRun,
   BillingBalance,
@@ -3710,3 +3711,19 @@ export const RuntimeProfileSchema = z
     runtime_type: profile.runtime_type || profile.protocol_family,
   }));
 export const RuntimeProfileListSchema = z.array(RuntimeProfileSchema);
+
+// Workspace knowledge — agent-proposed lessons gated by human review.
+export const WorkspaceKnowledgeSchema = z.object({
+  id: z.string(),
+  workspace_id: z.string(),
+  agent_id: z.string().nullable().optional(),
+  content: z.string(),
+  // Server-driven string ("active" | "pending" | "rejected" today) — kept as
+  // z.string() so new statuses degrade instead of failing validation.
+  status: z.string(),
+  created_at: z.string(),
+}).loose();
+
+export const WorkspaceKnowledgeListSchema = z.array(WorkspaceKnowledgeSchema);
+
+export const EMPTY_KNOWLEDGE_LIST: WorkspaceKnowledge[] = [];

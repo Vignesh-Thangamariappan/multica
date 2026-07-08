@@ -136,6 +136,7 @@ export {
   QUICK_ACTION_TEMPLATE_TOKEN_RE,
   findQuickActionTemplateToken,
 } from "./quick-action";
+export type { WorkspaceKnowledge, KnowledgeStatus, CreateKnowledgeRequest } from "./knowledge";
 export type {
   TimelineEntry,
   AssigneeFrequencyEntry,

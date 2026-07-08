@@ -135,6 +135,8 @@ import type {
   IssueLabelsResponse,
   LabelResourceType,
   ResourceLabelsResponse,
+  WorkspaceKnowledge,
+  CreateKnowledgeRequest,
   PinnedItem,
   CreatePinRequest,
   PinnedItemType,
@@ -270,6 +272,7 @@ import {
   CommentsListSchema,
   CommentTriggerPreviewSchema,
   IssueTriggerPreviewSchema,
+  WorkspaceKnowledgeListSchema,
   CloudRuntimeNodeListSchema,
   CloudRuntimeNodeSchema,
   AgentBuilderRuntimeSwitchSchema,
@@ -297,6 +300,7 @@ import {
   EMPTY_ISSUE_TABLE_FACETS_RESPONSE,
   EMPTY_ISSUE_TABLE_GROUPS_RESPONSE,
   EMPTY_ISSUE_TABLE_ROWS_RESPONSE,
+  EMPTY_KNOWLEDGE_LIST,
   EMPTY_LIST_ISSUES_RESPONSE,
   EMPTY_SEARCH_ISSUES_RESPONSE,
   EMPTY_SEARCH_PROJECTS_RESPONSE,
@@ -4436,6 +4440,35 @@ export class ApiClient {
 
   async deleteIssueView(id: string): Promise<void> {
     await this.fetch(`/api/issue-views/${id}`, { method: "DELETE" });
+  // Workspace knowledge — agent-proposed lessons gated by human review.
+  async listKnowledge(status: string): Promise<WorkspaceKnowledge[]> {
+    const raw = await this.fetch<unknown>(
+      `/api/knowledge?status=${encodeURIComponent(status)}`,
+    );
+    return parseWithFallback(raw, WorkspaceKnowledgeListSchema, EMPTY_KNOWLEDGE_LIST, {
+      endpoint: "GET /api/knowledge",
+    });
+  }
+
+  async createKnowledge(data: CreateKnowledgeRequest): Promise<WorkspaceKnowledge> {
+    return this.fetch(`/api/knowledge`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async approveKnowledge(id: string): Promise<WorkspaceKnowledge> {
+    return this.fetch(`/api/knowledge/${id}/approve`, { method: "PATCH" });
+  }
+
+  async rejectKnowledge(id: string): Promise<WorkspaceKnowledge> {
+    return this.fetch(`/api/knowledge/${id}/reject`, { method: "PATCH" });
+  }
+
+  async deleteKnowledge(id: string): Promise<void> {
+    await this.fetch(`/api/knowledge/${id}`, { method: "DELETE" });
+  }
+
   }
 
   async getIssueViewPreference(params: {

@@ -1,0 +1,40 @@
+{
+  "page": {
+    "title": "知识库",
+    "tagline": "Agent 从工作中总结的经验。批准后的条目会注入此工作区的每次 agent 运行。",
+    "load_failed": "知识条目加载失败",
+    "try_again": "重试"
+  },
+  "tabs": {
+    "pending": "待审核",
+    "active": "已启用",
+    "rejected": "已拒绝"
+  },
+  "empty": {
+    "pending": {
+      "title": "暂无待审核提案",
+      "description": "Agent 在运行中提出的新知识会显示在这里，等待你审核。"
+    },
+    "active": {
+      "title": "暂无已启用知识",
+      "description": "批准待审核提案或手动添加条目——已启用的知识会注入每次 agent 运行。"
+    },
+    "rejected": {
+      "title": "暂无已拒绝条目",
+      "description": "被拒绝的提案会保留在这里以供审计。"
+    }
+  },
+  "actions": {
+    "approve": "批准",
+    "reject": "拒绝",
+    "delete": "删除"
+  },
+  "card": {
+    "agent": "Agent",
+    "member": "成员"
+  },
+  "add": {
+    "placeholder": "添加希望 agent 遵循的知识…",
+    "submit": "添加"
+  }
+}
