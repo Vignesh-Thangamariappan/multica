@@ -8546,6 +8546,13 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, slot i
 	if rootsValue, ok := composeOpenclawIncludeRoots(env.OpenclawIncludeRoot, os.Getenv("OPENCLAW_INCLUDE_ROOTS")); ok {
 		agentEnv["OPENCLAW_INCLUDE_ROOTS"] = rootsValue
 	}
+	// Gemini CLI's trust check runs in parallel with arg parsing, creating a
+	// race where `--skip-trust` may not have set the env var yet. Setting
+	// GEMINI_CLI_TRUST_WORKSPACE=true in the process environment before
+	// gemini starts is the canonical bypass that wins the race every time.
+	if provider == "gemini" {
+		agentEnv["GEMINI_CLI_TRUST_WORKSPACE"] = "true"
+	}
 	// Inject user-configured custom environment variables (e.g. ANTHROPIC_API_KEY,
 	// ANTHROPIC_BASE_URL for router/proxy mode, or CLAUDE_CODE_USE_BEDROCK for
 	// Bedrock). These are set per-agent via the agent settings UI.
@@ -9026,7 +9033,7 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, slot i
 			retryTask.RetryCount = 1
 			retryTask.PriorSessionID = result.SessionID
 			retryTask.RetryError = errMsg
-			return d.runTask(ctx, retryTask, provider, taskLog)
+			return d.runTask(ctx, retryTask, provider, slot, taskLog)
 		}
 
 		// Forward SessionID/WorkDir on the blocked path: backends commonly

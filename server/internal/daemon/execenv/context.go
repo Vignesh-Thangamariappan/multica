@@ -192,7 +192,7 @@ func writeContextFiles(workDir, provider string, ctx TaskContextForEnv, manifest
 	// Inject workspace-level Claude Code settings (e.g. RTK hook) so they
 	// apply even when the agent runs with --permission-mode bypassPermissions.
 	if provider == "claude" {
-		if err := writeClaudeSettings(workDir); err != nil {
+		if err := writeClaudeSettings(workDir, manifest); err != nil {
 			return fmt.Errorf("write claude settings: %w", err)
 		}
 	}
@@ -1006,8 +1006,9 @@ func writeSkillFiles(skillsDir string, skills []SkillContextForEnv, manifest *si
 // writeClaudeSettings writes .claude/settings.json into the workspace workdir.
 // It injects the RTK PreToolUse hook so token savings apply even when Claude
 // runs with --permission-mode bypassPermissions (where user-level hooks are skipped).
-// If the RTK hook script is not installed on this machine the function is a no-op.
-func writeClaudeSettings(workDir string) error {
+// If the RTK hook script is not installed on this machine, or a user-owned
+// settings.json already exists, the function is a no-op.
+func writeClaudeSettings(workDir string, manifest *sidecarManifest) error {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return nil // non-fatal
@@ -1018,7 +1019,14 @@ func writeClaudeSettings(workDir string) error {
 	}
 
 	claudeDir := filepath.Join(workDir, ".claude")
-	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
+	settingsPath := filepath.Join(claudeDir, "settings.json")
+
+	// Do not overwrite a user-owned settings.json.
+	if _, err := os.Stat(settingsPath); err == nil {
+		return nil
+	}
+
+	if err := recordMkdirAll(claudeDir, 0o755, manifest); err != nil {
 		return fmt.Errorf("create .claude dir: %w", err)
 	}
 
@@ -1040,5 +1048,5 @@ func writeClaudeSettings(workDir string) error {
 }
 `, hookPath)
 
-	return os.WriteFile(filepath.Join(claudeDir, "settings.json"), []byte(content), 0o644)
+	return recordWriteFile(settingsPath, []byte(content), 0o644, manifest)
 }
