@@ -28,6 +28,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/handler"
 	"github.com/multica-ai/multica/server/internal/integrations/channel"
 	"github.com/multica-ai/multica/server/internal/integrations/channel/engine"
+	"github.com/multica-ai/multica/server/internal/integrations/clickup"
 	composiointeg "github.com/multica-ai/multica/server/internal/integrations/composio"
 	"github.com/multica-ai/multica/server/internal/integrations/dingtalk"
 	"github.com/multica-ai/multica/server/internal/integrations/lark"
@@ -569,6 +570,22 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 	// continues to start so self-host deployments that have not opted
 	// in to Lark are unaffected. Feishu registers its Factory + ResolverSet
 	// into the channel engine above.
+	// ClickUp integration. Only wired when MULTICA_CLICKUP_SECRET_KEY is
+	// set (at-rest encryption key for the personal API token). When the
+	// key is absent the ClickUp handlers return 503 / configured:false
+	// and the rest of the server is unaffected — same opt-in contract
+	// as Lark. Design: docs/clickup-integration-rfc.md.
+	if cuKey, err := clickup.ResolveSecretKey(); err != nil {
+		slog.Error("clickup: secret key invalid; clickup integration disabled", "error", err)
+	} else if cuKey != nil {
+		if cuBox, err := secretbox.New(cuKey); err != nil {
+			slog.Error("clickup: secretbox.New failed; clickup integration disabled", "error", err)
+		} else {
+			h.SetClickUpService(clickup.NewService(queries, cuBox, h.IssueService, slog.Default()))
+			slog.Info("clickup integration enabled")
+		}
+	}
+
 	if larkKey, err := secretbox.LoadKey("MULTICA_LARK_SECRET_KEY"); err == nil {
 		box, err := secretbox.New(larkKey)
 		if err != nil {
@@ -2463,6 +2480,24 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 				r.Get("/", h.GetNotificationPreferences)
 				r.Patch("/", h.PatchNotificationPreferences)
 				r.Put("/", h.UpdateNotificationPreferences)
+			})
+
+			// ClickUp integration (Phase 1). Reads are member-visible so
+			// the settings tab renders for non-admins; management +
+			// import are admin-only. Push-create on an issue is
+			// member-level on purpose — agents push via the CLI.
+			r.Route("/api/clickup", func(r chi.Router) {
+				r.Get("/installation", h.GetClickUpInstallation)
+				r.Get("/links", h.ListClickUpLinks)
+				adminOnly := middleware.RequireWorkspaceRole(queries, "owner", "admin")
+				r.With(adminOnly).Put("/secret-key", h.SetClickUpKey)
+				r.With(adminOnly).Post("/installation", h.ConnectClickUp)
+				r.With(adminOnly).Delete("/installation", h.DisconnectClickUp)
+				r.With(adminOnly).Get("/spaces", h.DiscoverClickUpLists)
+				r.With(adminOnly).Post("/links", h.CreateClickUpLink)
+				r.With(adminOnly).Delete("/links/{linkId}", h.DeleteClickUpLink)
+				r.With(adminOnly).Get("/links/{linkId}/preview", h.PreviewClickUpImport)
+				r.With(adminOnly).Post("/links/{linkId}/import", h.ImportClickUpList)
 			})
 
 			// Workspace Knowledge

@@ -137,6 +137,13 @@ import type {
   ResourceLabelsResponse,
   WorkspaceKnowledge,
   CreateKnowledgeRequest,
+  ClickUpInstallation,
+  ClickUpLink,
+  ClickUpSpaceTree,
+  ClickUpImportSummary,
+  ClickUpTaskPreview,
+  ClickUpTaskLink,
+  CreateClickUpLinkRequest,
   PinnedItem,
   CreatePinRequest,
   PinnedItemType,
@@ -273,6 +280,10 @@ import {
   CommentTriggerPreviewSchema,
   IssueTriggerPreviewSchema,
   WorkspaceKnowledgeListSchema,
+  ClickUpInstallationSchema,
+  ClickUpLinkListSchema,
+  ClickUpSpaceTreeListSchema,
+  ClickUpTaskPreviewListSchema,
   CloudRuntimeNodeListSchema,
   CloudRuntimeNodeSchema,
   AgentBuilderRuntimeSwitchSchema,
@@ -300,6 +311,10 @@ import {
   EMPTY_ISSUE_TABLE_FACETS_RESPONSE,
   EMPTY_ISSUE_TABLE_GROUPS_RESPONSE,
   EMPTY_ISSUE_TABLE_ROWS_RESPONSE,
+  EMPTY_CLICKUP_INSTALLATION,
+  EMPTY_CLICKUP_LINK_LIST,
+  EMPTY_CLICKUP_SPACE_TREE,
+  EMPTY_CLICKUP_TASK_PREVIEWS,
   EMPTY_KNOWLEDGE_LIST,
   EMPTY_LIST_ISSUES_RESPONSE,
   EMPTY_SEARCH_ISSUES_RESPONSE,
@@ -4467,6 +4482,88 @@ export class ApiClient {
 
   async deleteKnowledge(id: string): Promise<void> {
     await this.fetch(`/api/knowledge/${id}`, { method: "DELETE" });
+  }
+
+  // ClickUp integration (Phase 1) — docs/clickup-integration-rfc.md.
+  async getClickUpInstallation(): Promise<ClickUpInstallation> {
+    const raw = await this.fetch<unknown>(`/api/clickup/installation`);
+    return parseWithFallback(raw, ClickUpInstallationSchema, EMPTY_CLICKUP_INSTALLATION, {
+      endpoint: "GET /api/clickup/installation",
+    });
+  }
+
+  async connectClickUp(apiToken: string): Promise<ClickUpInstallation> {
+    const raw = await this.fetch<unknown>(`/api/clickup/installation`, {
+      method: "POST",
+      body: JSON.stringify({ api_token: apiToken }),
+    });
+    return parseWithFallback(raw, ClickUpInstallationSchema, EMPTY_CLICKUP_INSTALLATION, {
+      endpoint: "POST /api/clickup/installation",
+    });
+  }
+
+  async setClickUpSecretKey(secretKey: string): Promise<void> {
+    await this.fetch(`/api/clickup/secret-key`, {
+      method: "PUT",
+      body: JSON.stringify({ secret_key: secretKey }),
+    });
+  }
+
+  async disconnectClickUp(): Promise<void> {
+    await this.fetch(`/api/clickup/installation`, { method: "DELETE" });
+  }
+
+  async discoverClickUpLists(): Promise<ClickUpSpaceTree[]> {
+    const raw = await this.fetch<unknown>(`/api/clickup/spaces`);
+    return parseWithFallback(raw, ClickUpSpaceTreeListSchema, EMPTY_CLICKUP_SPACE_TREE, {
+      endpoint: "GET /api/clickup/spaces",
+    });
+  }
+
+  async listClickUpLinks(): Promise<ClickUpLink[]> {
+    const raw = await this.fetch<unknown>(`/api/clickup/links`);
+    return parseWithFallback(raw, ClickUpLinkListSchema, EMPTY_CLICKUP_LINK_LIST, {
+      endpoint: "GET /api/clickup/links",
+    });
+  }
+
+  async createClickUpLink(data: CreateClickUpLinkRequest): Promise<ClickUpLink> {
+    return this.fetch(`/api/clickup/links`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteClickUpLink(id: string): Promise<void> {
+    await this.fetch(`/api/clickup/links/${id}`, { method: "DELETE" });
+  }
+
+  async previewClickUpImport(id: string, includeClosed: boolean): Promise<ClickUpTaskPreview[]> {
+    const raw = await this.fetch<unknown>(
+      `/api/clickup/links/${id}/preview?include_closed=${includeClosed}`,
+    );
+    return parseWithFallback(raw, ClickUpTaskPreviewListSchema, EMPTY_CLICKUP_TASK_PREVIEWS, {
+      endpoint: "GET /api/clickup/links/{id}/preview",
+    });
+  }
+
+  async importClickUpList(
+    id: string,
+    includeClosed: boolean,
+    taskIds?: string[],
+  ): Promise<ClickUpImportSummary> {
+    return this.fetch(`/api/clickup/links/${id}/import`, {
+      method: "POST",
+      body: JSON.stringify({ include_closed: includeClosed, task_ids: taskIds ?? [] }),
+    });
+  }
+
+  async pushIssueToClickUp(issueId: string): Promise<ClickUpTaskLink> {
+    return this.fetch(`/api/issues/${issueId}/clickup`, { method: "POST" });
+  }
+
+  async getIssueClickUpLink(issueId: string): Promise<ClickUpTaskLink> {
+    return this.fetch(`/api/issues/${issueId}/clickup`);
   }
 
   }

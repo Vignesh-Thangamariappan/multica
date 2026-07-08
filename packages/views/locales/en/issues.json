@@ -937,7 +937,10 @@
     "row_backlog_label": "Backlog",
     "row_backlog_hint": "keeps the agent paused",
     "row_todo_label": "Todo",
-    "row_todo_hint": "starts the agent"
+    "row_todo_hint": "starts the agent",
+    "dont_show_again": "Don't show this again",
+    "keep_in_backlog": "Keep in Backlog",
+    "move_to_todo": "Move to Todo"
   },
   "save_view": {
     "title": "Save as view",
@@ -1436,5 +1439,11 @@
     "overview_close": "Close",
     "overview_empty": "No deliverables of this type.",
     "group_comment_by": "Comment by {{name}}"
+  },
+  "clickup": {
+    "linked_chip": "ClickUp task",
+    "push_button": "Create in ClickUp",
+    "pushed_toast": "ClickUp task created",
+    "push_failed_toast": "Failed to create ClickUp task"
   }
 }

@@ -898,7 +898,10 @@
     "row_backlog_label": "backlog",
     "row_backlog_hint": "智能体保持暂停",
     "row_todo_label": "todo",
-    "row_todo_hint": "启动智能体"
+    "row_todo_hint": "启动智能体",
+    "dont_show_again": "不再提示",
+    "keep_in_backlog": "保持在 Backlog",
+    "move_to_todo": "移到 Todo"
   },
   "save_view": {
     "title": "保存为视图",
@@ -1389,5 +1392,11 @@
     "overview_close": "关闭",
     "overview_empty": "没有这类产物。",
     "group_comment_by": "{{name}} 的评论"
+  },
+  "clickup": {
+    "linked_chip": "ClickUp 任务",
+    "push_button": "在 ClickUp 中创建",
+    "pushed_toast": "ClickUp 任务已创建",
+    "push_failed_toast": "ClickUp 任务创建失败"
   }
 }

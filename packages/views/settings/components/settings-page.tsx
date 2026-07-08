@@ -17,6 +17,7 @@ import {
   Plug,
   Search,
   Server,
+  ListChecks,
   Settings,
   SlidersHorizontal,
   Tags,
@@ -46,6 +47,7 @@ import { WorkspaceTab } from "./workspace-tab";
 import { MembersTab } from "./members-tab";
 import { CodeTab } from "./code-tab";
 import { ChannelsTab } from "./channels-tab";
+import { ClickUpTab } from "./clickup-tab";
 import { ConnectedAppsTab, useComposioAvailable } from "./connected-apps-tab";
 import { NotificationsTab } from "./notifications-tab";
 import { LabelsTab } from "./labels-tab";
@@ -249,6 +251,9 @@ export function SettingsPage({ extraDeviceTabs = [] }: SettingsPageProps = {}) {
               <ChannelsTab />,
             ),
             entry("mcp", t(($) => $.page.tabs.mcp), Server, <McpTab />, {
+              adminOnly: true,
+            }),
+            entry("clickup", t(($) => $.page.tabs.clickup), ListChecks, <ClickUpTab />, {
               adminOnly: true,
             }),
             ...(pluginsEnabled

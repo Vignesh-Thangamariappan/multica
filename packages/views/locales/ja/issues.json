@@ -898,7 +898,10 @@
     "row_backlog_label": "バックログ",
     "row_backlog_hint": "エージェントを一時停止のままにします",
     "row_todo_label": "未着手",
-    "row_todo_hint": "エージェントを開始します"
+    "row_todo_hint": "エージェントを開始します",
+    "dont_show_again": "今後表示しない",
+    "keep_in_backlog": "バックログのままにする",
+    "move_to_todo": "未着手に移動"
   },
   "save_view": {
     "title": "ビューとして保存",
@@ -1389,5 +1392,11 @@
     "overview_close": "閉じる",
     "overview_empty": "この種類の成果物はありません。",
     "group_comment_by": "{{name}} のコメント"
+  },
+  "clickup": {
+    "linked_chip": "ClickUp タスク",
+    "push_button": "ClickUp に作成",
+    "pushed_toast": "ClickUp タスクを作成しました",
+    "push_failed_toast": "ClickUp タスクの作成に失敗しました"
   }
 }

@@ -138,6 +138,17 @@ export {
 } from "./quick-action";
 export type { WorkspaceKnowledge, KnowledgeStatus, CreateKnowledgeRequest } from "./knowledge";
 export type {
+  ClickUpInstallation,
+  ClickUpLink,
+  ClickUpList,
+  ClickUpFolder,
+  ClickUpSpaceTree,
+  ClickUpImportSummary,
+  ClickUpTaskPreview,
+  ClickUpTaskLink,
+  CreateClickUpLinkRequest,
+} from "./clickup";
+export type {
   TimelineEntry,
   AssigneeFrequencyEntry,
 } from "./activity";

@@ -113,6 +113,7 @@ import { WakeupsSection } from "./wakeups-section";
 import { QuickActionsSection } from "./quick-actions-section";
 import { PluginPanelSection } from "../../plugins";
 import { PullRequestsSection } from "./pull-requests-section";
+import { ClickUpSection } from "./clickup-section";
 import { useGitHubSettings } from "@multica/core/github";
 import { DeliverablesSection } from "./deliverables/deliverables-section";
 import { DeliverablesOverview } from "./deliverables/deliverables-overview";
@@ -2946,6 +2947,11 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
           because it is the least-read block in the sidebar: the values
           never change once the issue exists, while the log above it is
           what people actually come here to check. */}
+      {/* ClickUp pairing — renders nothing unless the integration is
+          connected AND this issue is linked (or linkable via its
+          project). See clickup-section.tsx. */}
+      <ClickUpSection issueId={id} projectId={issue.project_id} />
+
       <div>
         <button
           type="button"
