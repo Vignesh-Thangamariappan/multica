@@ -38,6 +38,8 @@ export function useTypeLabels(): Record<InboxItemType, string> {
     autopilot_paused: t(($) => $.types.autopilot_paused),
     autopilot_quota_exceeded: t(($) => $.types.autopilot_quota_exceeded),
     children_done: t(($) => $.types.children_done),
+    autopilot_completed: t(($) => $.types.autopilot_completed),
+    autopilot_failed: t(($) => $.types.autopilot_failed),
   };
 }
 
@@ -141,6 +143,10 @@ export function InboxDetailLabel({ item }: { item: InboxItem }) {
       // The stage arrives as a JSON number; details are typed as strings.
       const stage = details.stage != null ? String(details.stage) : "";
       if (stage) return <span>{t(($) => $.labels.children_done_stage, { stage })}</span>;
+      return <span>{typeLabels[item.type]}</span>;
+    }
+    case "autopilot_failed": {
+      if (item.body) return <span>{item.body}</span>;
       return <span>{typeLabels[item.type]}</span>;
     }
     default:
