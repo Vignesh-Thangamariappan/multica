@@ -1,0 +1,40 @@
+{
+  "page": {
+    "title": "Connaissances",
+    "tagline": "Les leçons que les agents tirent de leur travail. Les entrées approuvées sont injectées dans chaque exécution d'agent de cet espace de travail.",
+    "load_failed": "Impossible de charger les connaissances",
+    "try_again": "Réessayer"
+  },
+  "tabs": {
+    "pending": "En attente",
+    "active": "Actives",
+    "rejected": "Rejetées"
+  },
+  "empty": {
+    "pending": {
+      "title": "Aucune proposition en attente",
+      "description": "Lorsque les agents proposent de nouvelles connaissances à partir de leurs exécutions, elles apparaissent ici pour validation."
+    },
+    "active": {
+      "title": "Aucune connaissance active pour le moment",
+      "description": "Approuvez les propositions en attente ou ajoutez une entrée — les connaissances actives sont injectées dans chaque exécution d'agent."
+    },
+    "rejected": {
+      "title": "Aucune entrée rejetée",
+      "description": "Les propositions rejetées sont conservées ici pour audit."
+    }
+  },
+  "actions": {
+    "approve": "Approuver",
+    "reject": "Rejeter",
+    "delete": "Supprimer"
+  },
+  "card": {
+    "agent": "Agent",
+    "member": "Membre"
+  },
+  "add": {
+    "placeholder": "Ajoutez une connaissance que les agents doivent suivre…",
+    "submit": "Ajouter"
+  }
+}

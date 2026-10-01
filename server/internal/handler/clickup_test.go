@@ -255,6 +255,7 @@ func TestClickUpPushCreate(t *testing.T) {
 func TestSetClickUpKeyActivatesIntegration(t *testing.T) {
 	t.Setenv("MULTICA_SECRETS_DIR", t.TempDir())
 	t.Setenv("MULTICA_CLICKUP_SECRET_KEY", "")
+	t.Setenv("DISABLE_WORKSPACE_CREATION", "true")
 	t.Cleanup(func() { testHandler.SetClickUpService(nil) })
 
 	// Garbage key → 400, stays unconfigured.
@@ -299,6 +300,7 @@ func TestSetClickUpKeyActivatesIntegration(t *testing.T) {
 func TestSetClickUpKeyRefusedWhenEnvManaged(t *testing.T) {
 	t.Setenv("MULTICA_SECRETS_DIR", t.TempDir())
 	t.Setenv("MULTICA_CLICKUP_SECRET_KEY", base64.StdEncoding.EncodeToString(make([]byte, secretbox.KeySize)))
+	t.Setenv("DISABLE_WORKSPACE_CREATION", "true")
 	t.Cleanup(func() { testHandler.SetClickUpService(nil) })
 
 	raw := make([]byte, secretbox.KeySize)
@@ -310,6 +312,35 @@ func TestSetClickUpKeyRefusedWhenEnvManaged(t *testing.T) {
 		map[string]string{"secret_key": base64.StdEncoding.EncodeToString(raw)}))
 	if w.Code != http.StatusConflict {
 		t.Fatalf("env-managed: expected 409, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+// TestSetClickUpKeyRefusedOnMultiTenantInstance verifies the endpoint
+// refuses UI activation unless the instance is locked to a single tenant
+// (DISABLE_WORKSPACE_CREATION=true). The key this endpoint sets is
+// process-global — it encrypts every workspace's ClickUp token on this
+// instance — so a per-workspace owner/admin check is the wrong
+// authorization scope for it on a multi-tenant deployment (security review
+// finding: any user could create a workspace, become its admin, and be
+// first to set the instance-wide key).
+func TestSetClickUpKeyRefusedOnMultiTenantInstance(t *testing.T) {
+	t.Setenv("MULTICA_SECRETS_DIR", t.TempDir())
+	t.Setenv("MULTICA_CLICKUP_SECRET_KEY", "")
+	t.Setenv("DISABLE_WORKSPACE_CREATION", "")
+	t.Cleanup(func() { testHandler.SetClickUpService(nil) })
+
+	raw := make([]byte, secretbox.KeySize)
+	if _, err := rand.Read(raw); err != nil {
+		t.Fatal(err)
+	}
+	w := httptest.NewRecorder()
+	testHandler.SetClickUpKey(w, newRequest("PUT", "/api/clickup/secret-key",
+		map[string]string{"secret_key": base64.StdEncoding.EncodeToString(raw)}))
+	if w.Code != http.StatusConflict {
+		t.Fatalf("multi-tenant instance: expected 409, got %d: %s", w.Code, w.Body.String())
+	}
+	if testHandler.ClickUpService() != nil {
+		t.Fatal("service must stay nil when instance isn't locked to single-tenant")
 	}
 }
 

@@ -58,10 +58,12 @@ const (
 	// without buying any latency improvement.
 	registrationDefaultPollSeconds = 5
 
-	// Default registration window (10 minutes) — long enough for a user
-	// to scan, switch apps, walk the create-bot flow, and authorize on
-	// their phone, short enough that an abandoned session does not pin
-	// resources for hours.
+	// Fallback registration window, used ONLY when the server omits the
+	// expiry from its begin response. Both real clouds send
+	// expires_in=3600, so this is a floor for mocks / schema drift, not
+	// the value users normally get: 10 minutes is long enough to scan,
+	// switch apps, walk the create-bot flow, and authorize on a phone,
+	// short enough that an abandoned session does not poll for hours.
 	registrationDefaultExpireSeconds = 600
 
 	// Internal-tenant brand label Lark uses to flag "you scanned with a
@@ -72,6 +74,18 @@ const (
 	// tenant_brand hint exactly once during the polling stream and the
 	// subsequent poll must reach the new domain to learn the credentials.
 	registrationTenantBrandLark = "lark"
+
+	// Mirror brand label for the reverse direction: a user who picked
+	// the "Bind to Lark" CTA but actually authorized with a mainland
+	// Feishu account. The split-CTA UX (MUL-3083) rendered a QR against
+	// accounts.larksuite.com, but Lark's poll stream surfaces
+	// tenant_brand="feishu" once authorization completes on the wrong
+	// cloud, and we honor that signal symmetrically — re-aim polling
+	// at accounts.feishu.cn and let the next poll fetch the credentials
+	// from the right host. Without this, "wrong entry" was a hard
+	// install failure for the lark→feishu direction even though the
+	// feishu→lark direction recovered automatically.
+	registrationTenantBrandFeishu = "feishu"
 )
 
 // RegistrationConfig configures the device-flow client. All fields are
@@ -170,13 +184,23 @@ type PollResult struct {
 	ClientSecret string
 	OpenID       OpenID
 
-	// SwitchedDomain is non-empty when Lark told us "this is a Lark
-	// international account, re-poll over there." RegistrationService
-	// must update its session's stored domain and re-poll WITHOUT
-	// honoring the interval (the SDK does the same — the upstream
-	// behaviour is that the very next poll lands on the new domain and
-	// returns the actual credentials).
+	// SwitchedDomain is non-empty when Lark told us "this is the wrong
+	// cloud, re-poll over there." It is paired with SwitchedRegion so
+	// the caller can update both the polling host AND the per-install
+	// region in one step. Originally this only fired in the
+	// Feishu→Lark direction (Lark international users authorizing on
+	// a Feishu-first begin); after MUL-3083 follow-up it is symmetric,
+	// so a user who picked the "wrong" Bind CTA also recovers — the
+	// service must update the session's stored domain AND region and
+	// re-poll WITHOUT honoring the interval (the SDK does the same —
+	// the upstream behaviour is that the very next poll lands on the
+	// new domain and returns the actual credentials).
 	SwitchedDomain string
+	// SwitchedRegion is the region the new domain belongs to. Set in
+	// lockstep with SwitchedDomain; ignored when SwitchedDomain is
+	// empty. Carrying the region here keeps the caller from having to
+	// re-derive it from the domain string at session-update time.
+	SwitchedRegion Region
 
 	// Status carries non-terminal protocol signals — typically
 	// "authorization_pending" or "slow_down". The service uses these
@@ -207,10 +231,18 @@ func (e *RegistrationError) Error() string {
 	return fmt.Sprintf("registration: %s: %s", e.Code, e.Description)
 }
 
-// Begin opens a new device-flow session against the configured Feishu
-// (mainland) domain. Lark may surface a Lark-international tenant on
-// the FIRST poll — we don't try to predict it here; the polling loop
-// in RegistrationService handles the domain swap.
+// Begin opens a new device-flow session against the open-platform host
+// for the requested region. Region is normally chosen explicitly by the
+// caller (the user picked "Feishu" or "Lark" in the UI) so the QR
+// renders against the same cloud the user expects to scan from; an
+// empty value falls back to Feishu (mainland) for back-compat with
+// callers that pre-date region-aware install. Lark may STILL surface a
+// Lark-international tenant on a subsequent poll even when the begin
+// host was Feishu — the SwitchedDomain branch in RegistrationService
+// keeps that auto-detect path alive as a fallback for users who pick
+// the wrong entry, so explicit region selection is a routing
+// optimization (saves one round-trip and renders the right cloud's QR
+// up front), not a constraint on what the device flow can recover from.
 //
 // namePreset pre-fills the bot/app name on Lark's "create a
 // PersonalAgent" form so the installed bot defaults to e.g.
@@ -218,16 +250,31 @@ func (e *RegistrationError) Error() string {
 // "{用户姓名}的智能助手". It is a user-editable default (the user can
 // still change it on the form), and it rides on the QR URL — not the
 // begin POST body, which has no name field. Empty omits the pre-fill.
-func (c *RegistrationClient) Begin(ctx context.Context, namePreset string) (*BeginResult, error) {
+func (c *RegistrationClient) Begin(ctx context.Context, namePreset string, region Region) (*BeginResult, error) {
+	// Pick the begin domain off the requested region. Empty / unknown
+	// regions degrade to Feishu (mainland) — same back-compat invariant
+	// as RegionOrDefault, so callers that pre-date this signature
+	// (passing "") keep working.
+	domain := c.cfg.Domain
+	if region == RegionLark {
+		domain = c.cfg.LarkDomain
+	}
 	var resp struct {
 		DeviceCode              string `json:"device_code"`
 		VerificationURIComplete string `json:"verification_uri_complete"`
 		VerificationURI         string `json:"verification_uri"`
 		UserCode                string `json:"user_code"`
 		Interval                int    `json:"interval"`
-		ExpireIn                int    `json:"expire_in"`
-		Error                   string `json:"error"`
-		ErrorDescription        string `json:"error_description"`
+		// ExpiresIn is the RFC 8628 §3.2 field name, and the one both
+		// accounts.feishu.cn and accounts.larksuite.com actually send
+		// (currently 3600). ExpireIn is the spelling the upstream Lark
+		// Go SDK types; we accept both so a schema drift in either
+		// direction keeps the real window instead of silently
+		// collapsing to the default.
+		ExpiresIn        int    `json:"expires_in"`
+		ExpireIn         int    `json:"expire_in"`
+		Error            string `json:"error"`
+		ErrorDescription string `json:"error_description"`
 	}
 	form := url.Values{
 		"action":            []string{"begin"},
@@ -235,7 +282,7 @@ func (c *RegistrationClient) Begin(ctx context.Context, namePreset string) (*Beg
 		"auth_method":       []string{"client_secret"},
 		"request_user_info": []string{"open_id"},
 	}
-	if err := c.doForm(ctx, c.cfg.Domain, form, &resp); err != nil {
+	if err := c.doForm(ctx, domain, form, &resp); err != nil {
 		return nil, err
 	}
 	if resp.Error != "" {
@@ -256,13 +303,15 @@ func (c *RegistrationClient) Begin(ctx context.Context, namePreset string) (*Beg
 		interval = resp.Interval
 	}
 	expireIn := registrationDefaultExpireSeconds
-	if resp.ExpireIn > 0 {
+	if resp.ExpiresIn > 0 {
+		expireIn = resp.ExpiresIn
+	} else if resp.ExpireIn > 0 {
 		expireIn = resp.ExpireIn
 	}
 	return &BeginResult{
 		DeviceCode: resp.DeviceCode,
 		QRCodeURL:  qr,
-		Domain:     c.cfg.Domain,
+		Domain:     domain,
 		Interval:   time.Duration(interval) * time.Second,
 		ExpiresIn:  time.Duration(expireIn) * time.Second,
 	}, nil
@@ -298,15 +347,41 @@ func (c *RegistrationClient) Poll(ctx context.Context, domain, deviceCode string
 		return nil, err
 	}
 
-	// Tenant-brand-driven domain swap. Lark emits this exactly once
-	// when a Lark-international account authorized; the next poll must
-	// hit accounts.larksuite.com to learn the credentials. We surface
-	// the swap as a typed signal so the service does not have to know
-	// the brand string.
-	if resp.UserInfo != nil &&
-		resp.UserInfo.TenantBrand == registrationTenantBrandLark &&
-		!strings.HasPrefix(domain, c.cfg.LarkDomain) {
-		return &PollResult{SwitchedDomain: c.cfg.LarkDomain}, nil
+	// Tenant-brand-driven domain swap. Lark emits this exactly once on
+	// the transition poll when the authorized account does not match
+	// the cloud the begin call hit; the next poll must reach the
+	// matching open-platform host to learn the credentials. We surface
+	// the swap (domain + region) as a typed signal so the service does
+	// not have to know the brand string OR re-derive the region from
+	// the host.
+	//
+	// Both directions are honored: feishu→lark for users who scanned a
+	// Feishu QR with a Lark-international account, AND lark→feishu for
+	// users who picked the new "Bind to Lark" CTA but actually
+	// authorized with a mainland Feishu account. Symmetry matters
+	// because the split-CTA UI (MUL-3083) also begins on
+	// accounts.larksuite.com directly — without the reverse swap, a
+	// "wrong entry" install on that side would carry RegionLark all
+	// the way through finishSuccess and fail (or commit a wrong-region
+	// row) at GetBotInfo. The check is gated on the current domain so
+	// we do not loop on the same brand we already match.
+	if resp.UserInfo != nil {
+		switch resp.UserInfo.TenantBrand {
+		case registrationTenantBrandLark:
+			if !strings.HasPrefix(domain, c.cfg.LarkDomain) {
+				return &PollResult{
+					SwitchedDomain: c.cfg.LarkDomain,
+					SwitchedRegion: RegionLark,
+				}, nil
+			}
+		case registrationTenantBrandFeishu:
+			if !strings.HasPrefix(domain, c.cfg.Domain) {
+				return &PollResult{
+					SwitchedDomain: c.cfg.Domain,
+					SwitchedRegion: RegionFeishu,
+				}, nil
+			}
+		}
 	}
 
 	// Success: both client_id AND client_secret AND the installer

@@ -71,7 +71,7 @@ func createTestSubIssue(t *testing.T, workspaceID, creatorID, parentIssueID stri
 func newNotificationBus(t *testing.T, queries *db.Queries) *events.Bus {
 	t.Helper()
 	bus := events.New()
-	registerSubscriberListeners(bus, queries)
+	registerSubscriberListeners(bus, testPool)
 	registerNotificationListeners(bus, queries)
 	return bus
 }
@@ -316,6 +316,65 @@ func TestNotification_StatusChanged(t *testing.T) {
 	}
 }
 
+// TestNotification_StatusChanged_Muted verifies that status_changes="muted"
+// prevents a new Inbox row without affecting other subscribers.
+func TestNotification_StatusChanged_Muted(t *testing.T) {
+	queries := db.New(testPool)
+	bus := newNotificationBus(t, queries)
+
+	mutedEmail := "notif-muted-status@multica.ai"
+	mutedID := createTestUser(t, mutedEmail)
+	t.Cleanup(func() { cleanupTestUser(t, mutedEmail) })
+
+	normalEmail := "notif-normal-status@multica.ai"
+	normalID := createTestUser(t, normalEmail)
+	t.Cleanup(func() { cleanupTestUser(t, normalEmail) })
+
+	issueID := createTestIssue(t, testWorkspaceID, testUserID)
+	t.Cleanup(func() {
+		cleanupInboxForIssue(t, issueID)
+		cleanupTestIssue(t, issueID)
+	})
+
+	if _, err := testPool.Exec(context.Background(), `
+		INSERT INTO notification_preference (workspace_id, user_id, preferences)
+		VALUES ($1, $2, '{"status_changes":"muted"}'::jsonb)
+	`, testWorkspaceID, mutedID); err != nil {
+		t.Fatalf("seed muted notification preference: %v", err)
+	}
+
+	addTestSubscriber(t, issueID, "member", mutedID, "commenter")
+	addTestSubscriber(t, issueID, "member", normalID, "commenter")
+
+	bus.Publish(events.Event{
+		Type:        protocol.EventIssueUpdated,
+		WorkspaceID: testWorkspaceID,
+		ActorType:   "member",
+		ActorID:     testUserID,
+		Payload: map[string]any{
+			"issue": handler.IssueResponse{
+				ID:          issueID,
+				WorkspaceID: testWorkspaceID,
+				Title:       "muted status test issue",
+				Status:      "in_progress",
+				Priority:    "medium",
+				CreatorType: "member",
+				CreatorID:   testUserID,
+			},
+			"assignee_changed": false,
+			"status_changed":   true,
+			"prev_status":      "todo",
+		},
+	})
+
+	if items := inboxItemsForRecipient(t, queries, mutedID); len(items) != 0 {
+		t.Fatalf("expected muted subscriber to receive 0 items, got %d", len(items))
+	}
+	if items := inboxItemsForRecipient(t, queries, normalID); len(items) != 1 {
+		t.Fatalf("expected normal subscriber to receive 1 item, got %d", len(items))
+	}
+}
+
 // TestNotification_CommentCreated verifies that all subscribers except the
 // commenter receive a "new_comment" notification.
 func TestNotification_CommentCreated(t *testing.T) {
@@ -460,7 +519,7 @@ func TestNotification_SystemCommentSkipsInboxAndMentions(t *testing.T) {
 func TestSubscriberSystemCommentDoesNotSubscribe(t *testing.T) {
 	queries := db.New(testPool)
 	bus := events.New()
-	registerSubscriberListeners(bus, queries)
+	registerSubscriberListeners(bus, testPool)
 
 	issueID := createTestIssue(t, testWorkspaceID, testUserID)
 	t.Cleanup(func() { cleanupTestIssue(t, issueID) })
@@ -1276,5 +1335,130 @@ func TestNotification_StatusChange_ReopenSurfacesNewTaskFailed(t *testing.T) {
 	}
 	if archived != 1 {
 		t.Fatalf("expected 1 archived task_failed row preserved from prior cycle, got %d", archived)
+	}
+}
+
+// inboxItemsForAgent returns non-archived inbox items addressed to an agent
+// recipient. inbox_item.recipient_id has no FK, so any UUID is valid.
+func inboxItemsForAgent(t *testing.T, queries *db.Queries, agentID string) []db.ListInboxItemsRow {
+	t.Helper()
+	items, err := queries.ListInboxItems(context.Background(), db.ListInboxItemsParams{
+		WorkspaceID:   util.MustParseUUID(testWorkspaceID),
+		RecipientType: "agent",
+		RecipientID:   util.MustParseUUID(agentID),
+	})
+	if err != nil {
+		t.Fatalf("ListInboxItems: %v", err)
+	}
+	return items
+}
+
+// autopilotIssuePayload builds an issue:created payload matching the
+// map[string]any shape that service/autopilot.go → issueToMap emits (NOT a
+// handler.IssueResponse struct), so the test exercises the real autopilot
+// wire format rather than the HTTP-handler format.
+func autopilotIssuePayload(issueID, agentID string) map[string]any {
+	agentType := "agent"
+	return map[string]any{
+		"id":            issueID,
+		"workspace_id":  testWorkspaceID,
+		"title":         "autopilot issue",
+		"status":        "todo",
+		"priority":      "none",
+		"assignee_type": &agentType,
+		"assignee_id":   &agentID,
+		"creator_type":  "agent",
+		"creator_id":    agentID,
+	}
+}
+
+// TestNotification_IssueCreated_AutopilotNotifiesAssigneeAgent is the
+// regression guard for the "autopilot tasks throw no notification" bug.
+//
+// Two faults combined: (1) autopilot publishes the issue as a map[string]any,
+// which the notification listener's hard handler.IssueResponse cast silently
+// dropped; (2) autopilot attributes the actor to the assignee agent, so the
+// self-notify skip suppressed the assignment notification. The fix normalizes
+// the payload via extractIssueFields and lets origin_type=autopilot bypass the
+// self-notify skip. The assignee agent must receive one issue_assigned item.
+func TestNotification_IssueCreated_AutopilotNotifiesAssigneeAgent(t *testing.T) {
+	queries := db.New(testPool)
+	bus := newNotificationBus(t, queries)
+
+	agentID := "a1a1a1a1-1111-4111-8111-a1a1a1a1a1a1"
+	issueID := createTestIssue(t, testWorkspaceID, testUserID)
+	t.Cleanup(func() {
+		cleanupInboxForIssue(t, issueID)
+		cleanupTestIssue(t, issueID)
+	})
+
+	var inboxEvents []events.Event
+	bus.Subscribe(protocol.EventInboxNew, func(e events.Event) {
+		inboxEvents = append(inboxEvents, e)
+	})
+
+	// actor == assignee agent, exactly as autopilot publishes it.
+	bus.Publish(events.Event{
+		Type:        protocol.EventIssueCreated,
+		WorkspaceID: testWorkspaceID,
+		ActorType:   "agent",
+		ActorID:     agentID,
+		Payload: map[string]any{
+			"issue":       autopilotIssuePayload(issueID, agentID),
+			"origin_type": "autopilot",
+		},
+	})
+
+	items := inboxItemsForAgent(t, queries, agentID)
+	if len(items) != 1 {
+		t.Fatalf("expected 1 inbox item for autopilot assignee agent, got %d", len(items))
+	}
+	if items[0].Type != "issue_assigned" {
+		t.Fatalf("expected type 'issue_assigned', got %q", items[0].Type)
+	}
+	if items[0].Title != "autopilot issue" {
+		t.Fatalf("expected title carried from map payload, got %q", items[0].Title)
+	}
+	if len(inboxEvents) != 1 {
+		t.Fatalf("expected 1 inbox:new event, got %d", len(inboxEvents))
+	}
+}
+
+// TestNotification_IssueCreated_AgentSelfAssignNoAutopilot guards that the
+// self-notify bypass is gated on origin_type=autopilot: an agent that itself
+// creates an issue assigned to itself (no autopilot origin) must NOT be
+// notified, just like the member self-assign case.
+func TestNotification_IssueCreated_AgentSelfAssignNoAutopilot(t *testing.T) {
+	queries := db.New(testPool)
+	bus := newNotificationBus(t, queries)
+
+	agentID := "a2a2a2a2-2222-4222-8222-a2a2a2a2a2a2"
+	issueID := createTestIssue(t, testWorkspaceID, testUserID)
+	t.Cleanup(func() {
+		cleanupInboxForIssue(t, issueID)
+		cleanupTestIssue(t, issueID)
+	})
+
+	var inboxEvents []events.Event
+	bus.Subscribe(protocol.EventInboxNew, func(e events.Event) {
+		inboxEvents = append(inboxEvents, e)
+	})
+
+	// Same actor==assignee map payload, but WITHOUT origin_type=autopilot.
+	bus.Publish(events.Event{
+		Type:        protocol.EventIssueCreated,
+		WorkspaceID: testWorkspaceID,
+		ActorType:   "agent",
+		ActorID:     agentID,
+		Payload: map[string]any{
+			"issue": autopilotIssuePayload(issueID, agentID),
+		},
+	})
+
+	if items := inboxItemsForAgent(t, queries, agentID); len(items) != 0 {
+		t.Fatalf("expected 0 inbox items for non-autopilot agent self-assign, got %d", len(items))
+	}
+	if len(inboxEvents) != 0 {
+		t.Fatalf("expected 0 inbox:new events, got %d", len(inboxEvents))
 	}
 }
