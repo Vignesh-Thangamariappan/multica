@@ -116,6 +116,7 @@ import frMembers from "./fr/members.json";
 import frMyIssues from "./fr/my-issues.json";
 import frSearch from "./fr/search.json";
 import frInbox from "./fr/inbox.json";
+import frKnowledge from "./fr/knowledge.json";
 import frWorkspace from "./fr/workspace.json";
 import frProjects from "./fr/projects.json";
 import frAutopilots from "./fr/autopilots.json";
@@ -259,6 +260,7 @@ export const RESOURCES: Record<SupportedLocale, LocaleResources> = {
     "my-issues": frMyIssues,
     search: frSearch,
     inbox: frInbox,
+    knowledge: frKnowledge,
     workspace: frWorkspace,
     projects: frProjects,
     autopilots: frAutopilots,

@@ -937,7 +937,10 @@
     "row_backlog_label": "À planifier",
     "row_backlog_hint": "laisse l'agent en pause",
     "row_todo_label": "À faire",
-    "row_todo_hint": "démarre l'agent"
+    "row_todo_hint": "démarre l'agent",
+    "dont_show_again": "Ne plus afficher",
+    "keep_in_backlog": "Garder dans le backlog",
+    "move_to_todo": "Passer à À faire"
   },
   "save_view": {
     "title": "Enregistrer comme vue",
@@ -1436,5 +1439,11 @@
     "overview_close": "Fermer",
     "overview_empty": "Aucun livrable de ce type.",
     "group_comment_by": "Commentaire de {{name}}"
+  },
+  "clickup": {
+    "linked_chip": "Tâche ClickUp",
+    "push_button": "Créer dans ClickUp",
+    "pushed_toast": "Tâche ClickUp créée",
+    "push_failed_toast": "Échec de la création de la tâche ClickUp"
   }
 }

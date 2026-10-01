@@ -11,7 +11,10 @@
     "usage": "Statistiques",
     "runtimes": "Runtimes",
     "skills": "Skills",
-    "settings": "Paramètres"
+    "settings": "Paramètres",
+    "office": "Bureau",
+    "meetings": "Réunions",
+    "knowledge": "Connaissances"
   },
   "tab": {
     "issue": "Tâche",
