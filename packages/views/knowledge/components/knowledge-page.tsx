@@ -100,7 +100,7 @@ function KnowledgeCard({
             <ActorAvatar
               actorType="agent"
               actorId={entry.agent_id}
-              size={16}
+              size="xs"
               enableHoverCard
             />
             {agentName ?? t(($) => $.card.agent)}

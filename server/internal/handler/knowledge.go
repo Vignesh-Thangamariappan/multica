@@ -116,29 +116,33 @@ func (h *Handler) ProposeWorkspaceKnowledge(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Resolve agent ID from context (set by daemon via X-Agent-ID header).
-	agentIDStr := r.Header.Get("X-Agent-ID")
-	var agentID pgtype.UUID
-	if agentIDStr != "" {
-		var ok bool
-		if agentID, ok = parseUUIDOrBadRequest(w, agentIDStr, "X-Agent-ID"); !ok {
-			return
-		}
-	}
-
-	// Resolve source task from context (set by daemon via X-Task-ID header).
-	taskIDStr := r.Header.Get("X-Task-ID")
-	var taskID pgtype.UUID
-	if taskIDStr != "" {
-		var ok bool
-		if taskID, ok = parseUUIDOrBadRequest(w, taskIDStr, "X-Task-ID"); !ok {
-			return
-		}
-	}
-
 	wsUUID, ok := parseUUIDOrBadRequest(w, wsID, "workspace_id")
 	if !ok {
 		return
+	}
+
+	// Attribute the proposal to an agent+task only once resolveActor has
+	// verified the caller's X-Agent-ID/X-Task-ID headers (agent belongs to
+	// this workspace, task belongs to that agent) rather than trusting the
+	// raw headers directly — otherwise any workspace member could forge a
+	// proposal's provenance to look like an agent-distilled lesson (#2359
+	// is the resolveActor fix this mirrors).
+	actorType, actorID := h.resolveActor(r, requestUserID(r), wsID)
+	var agentID pgtype.UUID
+	var taskID pgtype.UUID
+	if actorType == "agent" {
+		// actorID / X-Task-ID ultimately come from request headers; parse them
+		// with the non-panicking variant so a malformed value is a 400, never a
+		// handler panic (task-token requests skip resolveActor's UUID checks).
+		var ok bool
+		if agentID, ok = parseUUIDOrBadRequest(w, actorID, "X-Agent-ID"); !ok {
+			return
+		}
+		if taskIDStr := r.Header.Get("X-Task-ID"); taskIDStr != "" {
+			if taskID, ok = parseUUIDOrBadRequest(w, taskIDStr, "X-Task-ID"); !ok {
+				return
+			}
+		}
 	}
 	entry, err := h.Queries.CreateWorkspaceKnowledge(r.Context(), db.CreateWorkspaceKnowledgeParams{
 		WorkspaceID:  wsUUID,

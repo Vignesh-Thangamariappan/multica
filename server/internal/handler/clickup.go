@@ -5,7 +5,9 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"os"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -18,12 +20,24 @@ import (
 // is not configured. SetClickUpService swaps it in — at boot (router)
 // or at runtime via the admin SetClickUpKey flow.
 func (h *Handler) ClickUpService() *clickup.Service {
-	return h.clickupSvc.Load()
+	if h.clickupSvc == nil {
+		return nil
+	}
+	return h.clickupSvc.p.Load()
+}
+
+// clickupServiceHolder lets the live ClickUp service be swapped atomically
+// while Handler itself stays copyable.
+type clickupServiceHolder struct {
+	p atomic.Pointer[clickup.Service]
 }
 
 // SetClickUpService installs (or clears) the live ClickUp service.
 func (h *Handler) SetClickUpService(s *clickup.Service) {
-	h.clickupSvc.Store(s)
+	if h.clickupSvc == nil {
+		h.clickupSvc = &clickupServiceHolder{}
+	}
+	h.clickupSvc.p.Store(s)
 }
 
 // requireClickUp gates every ClickUp route on the service being
@@ -429,6 +443,17 @@ func (h *Handler) GetIssueClickUpLink(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) SetClickUpKey(w http.ResponseWriter, r *http.Request) {
 	if h.ClickUpService() != nil {
 		writeError(w, http.StatusConflict, "clickup integration already configured")
+		return
+	}
+	// The key this endpoint sets is process-global — it encrypts every
+	// workspace's ClickUp token on this instance, not just the caller's.
+	// A per-workspace owner/admin check is the wrong authorization scope
+	// for an instance-wide secret, so only allow UI activation when the
+	// instance is locked to a single tenant (self-host convention); a
+	// true multi-tenant deployment must set MULTICA_CLICKUP_SECRET_KEY
+	// via the operator-controlled env var instead.
+	if os.Getenv("DISABLE_WORKSPACE_CREATION") != "true" {
+		writeError(w, http.StatusConflict, "UI activation requires DISABLE_WORKSPACE_CREATION=true (single-tenant self-host); multi-tenant instances must set MULTICA_CLICKUP_SECRET_KEY via the operator env instead")
 		return
 	}
 

@@ -1,7 +1,7 @@
 "use client";
 
 import type { ComponentType } from "react";
-import { computePosition, flip, offset, shift } from "@floating-ui/dom";
+import { autoUpdate, computePosition, flip, offset, shift, size } from "@floating-ui/dom";
 import { ReactRenderer } from "@tiptap/react";
 import { exitSuggestion, type SuggestionKeyDownProps, type SuggestionProps } from "@tiptap/suggestion";
 import type { PluginKey } from "@tiptap/pm/state";
@@ -36,10 +36,13 @@ export function createSuggestionPopupRender<
     let renderer: ReactRenderer<TRef> | null = null;
     let popup: HTMLDivElement | null = null;
     let removeOutsideListeners: (() => void) | null = null;
+    let removeAutoUpdate: (() => void) | null = null;
 
     const cleanup = () => {
       removeOutsideListeners?.();
       removeOutsideListeners = null;
+      removeAutoUpdate?.();
+      removeAutoUpdate = null;
       renderer?.destroy();
       renderer = null;
       popup?.remove();
@@ -97,13 +100,65 @@ export function createSuggestionPopupRender<
         getBoundingClientRect: () => clientRect() ?? new DOMRect(),
       };
       computePosition(virtualEl, el, {
-        placement: "bottom-start",
+        // Open upward by default. The dominant hosts are bottom-anchored
+        // composers (chat input, issue comment/reply) whose roomy side is above
+        // the caret; preferring that side means `size` clamps to a large budget
+        // with no visible compression, and `flip` only sends it down in the rare
+        // case the caret sits near the viewport top. A `bottom-start` default
+        // instead stayed down whenever *any* space existed below — even when far
+        // more room was above — which read as "mostly opens down and gets
+        // squashed". Document-body editors (issue/project description, agent
+        // instructions) also host this popup; there the caret usually has room
+        // both ways, so `flip` keeps them on-screen regardless of the default.
+        placement: "top-start",
         strategy: "fixed",
-        middleware: [offset(4), flip(), shift({ padding: 8 })],
-      }).then(({ x, y }) => {
+        middleware: [
+          offset(6),
+          flip({ padding: 8 }),
+          shift({ padding: 8 }),
+          size({
+            padding: 8,
+            apply({ availableHeight }) {
+              // Publish the viewport-aware height budget as a CSS variable so
+              // the list component (the real scroll container) can clamp its own
+              // max-height to `min(designMax, availableHeight)`. Writing
+              // maxHeight on this wrapper is inert — the wrapper does not clip,
+              // the inner list scrolls — so it would let a fixed-height list
+              // overflow past the viewport edge. No floor here: when space is
+              // tight a short scrollable list beats one clipped off-screen.
+              el.style.setProperty(
+                "--suggestion-available-height",
+                // Guard against a negative budget (caret scrolled just out of
+                // the boundary): a negative max-height is invalid CSS and would
+                // drop the clamp entirely, letting the list overflow.
+                `${Math.max(0, Math.round(availableHeight))}px`,
+              );
+            },
+          }),
+        ],
+      }).then(({ x, y, placement }) => {
         if (popup !== el) return;
         el.style.left = `${x}px`;
         el.style.top = `${y}px`;
+        el.dataset.side = placement.startsWith("top") ? "top" : "bottom";
+      });
+    };
+
+    const trackPosition = (
+      el: HTMLDivElement,
+      clientRect: (() => DOMRect | null) | null | undefined,
+    ) => {
+      removeAutoUpdate?.();
+      removeAutoUpdate = null;
+      if (!clientRect) return;
+      const virtualEl = {
+        getBoundingClientRect: () => clientRect() ?? new DOMRect(),
+      };
+      removeAutoUpdate = autoUpdate(virtualEl, el, () => updatePosition(el, clientRect), {
+        ancestorResize: true,
+        ancestorScroll: true,
+        elementResize: true,
+        layoutShift: true,
       });
     };
 
@@ -122,16 +177,32 @@ export function createSuggestionPopupRender<
         doc.body.appendChild(popup);
 
         installOutsideListeners(props);
+        trackPosition(popup, props.clientRect);
         updatePosition(popup, props.clientRect);
       },
 
       onUpdate: (props: SuggestionProps<TItem, TSelected>) => {
         renderer?.updateProps(getProps(props));
-        if (popup) updatePosition(popup, props.clientRect);
+        if (popup) {
+          trackPosition(popup, props.clientRect);
+          updatePosition(popup, props.clientRect);
+        }
       },
 
       onKeyDown: (props: SuggestionKeyDownProps) => {
-        if (props.event.key === "Escape") {
+        // `Esc` is the legacy alias the suggestion plugin also matches on.
+        if (props.event.key === "Escape" || props.event.key === "Esc") {
+          // Escape while a picker is open must close ONLY the picker. Returning
+          // true makes ProseMirror call preventDefault(), but ProseMirror never
+          // stops propagation, and Base UI's dismiss layer listens for Escape on
+          // `document` in the bubble phase without consulting defaultPrevented.
+          // Without stopPropagation the same keypress that closes this popup
+          // also closes the host Dialog and discards the draft (MUL-5429).
+          // This handler is the only layer that knows a picker is open, so
+          // stopping here fixes every host at once (create-issue dialog, chat
+          // input, comment composer).
+          props.event.preventDefault();
+          props.event.stopPropagation();
           cleanup();
           return true;
         }

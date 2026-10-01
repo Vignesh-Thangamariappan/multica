@@ -64,11 +64,11 @@ import (
 //
 //   - resolveActor's primary job is "agent vs member" classification
 //     for ownership / authorship attribution (issue creator, comment
-//     author, etc.). It also has a fallback path that trusts
-//     X-Agent-ID + X-Task-ID for legacy CLI flows; that fallback is
-//     valid for resolving authorship but is irrelevant here. Billing
-//     authorization needs the strict "machine credential → forbidden"
-//     gate, nothing else.
+//     author, etc.). It also has a fallback path that reads
+//     X-Agent-ID + X-Task-ID directly; since MUL-3428 both middlewares
+//     strip those headers, so that path is unreachable from the network
+//     and irrelevant here either way. Billing authorization needs the
+//     strict "machine credential → forbidden" gate, nothing else.
 //   - resolveActor takes a workspaceID parameter; billing routes have
 //     no workspace context, so threading one through just to call it
 //     would be misleading.
@@ -95,14 +95,26 @@ import (
 // human-equivalent or machine-equivalent.
 func RequireHumanActor(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// X-Actor-Source is server-set only. The auth middleware
-		// strips any client-supplied value before stamping its own,
-		// so a non-empty value here is authoritative.
-		switch r.Header.Get("X-Actor-Source") {
-		case "task_token", "cloud_pat":
+		if isMachineCredentialActor(r) {
 			writeError(w, http.StatusForbidden, "this endpoint is only available to human actors")
 			return
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// isMachineCredentialActor centralizes the authoritative actor-source check so
+// sensitive handlers can keep a fail-closed backstop in addition to their
+// router middleware. Unknown actor sources intentionally remain human-equivalent
+// until their authentication branch is explicitly classified here.
+func isMachineCredentialActor(r *http.Request) bool {
+	// X-Actor-Source is server-set only. The auth middleware strips any
+	// client-supplied value before stamping its own, so a recognized value here
+	// is authoritative.
+	switch r.Header.Get("X-Actor-Source") {
+	case "task_token", "cloud_pat":
+		return true
+	default:
+		return false
+	}
 }
