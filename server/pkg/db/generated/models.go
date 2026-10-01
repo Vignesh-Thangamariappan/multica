@@ -544,26 +544,6 @@ type ChatSession struct {
 	ExplicitlyCreatedAt pgtype.Timestamptz `json:"explicitly_created_at"`
 }
 
-type ClientUsageDaily struct {
-	UserID          pgtype.UUID        `json:"user_id"`
-	ClientType      string             `json:"client_type"`
-	InstallID       pgtype.UUID        `json:"install_id"`
-	ActivityDate    pgtype.Date        `json:"activity_date"`
-	WorkspaceID     pgtype.UUID        `json:"workspace_id"`
-	ClientVersion   string             `json:"client_version"`
-	Os              string             `json:"os"`
-	FirstActiveAt   pgtype.Timestamptz `json:"first_active_at"`
-	LastActiveAt    pgtype.Timestamptz `json:"last_active_at"`
-	RuntimeProbedAt pgtype.Timestamptz `json:"runtime_probed_at"`
-	ProbeResult     pgtype.Text        `json:"probe_result"`
-	RuntimeCount    pgtype.Int4        `json:"runtime_count"`
-	ProviderSummary []byte             `json:"provider_summary"`
-	OnlineCount     pgtype.Int4        `json:"online_count"`
-	OfflineCount    pgtype.Int4        `json:"offline_count"`
-	CreatedAt       pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
-}
-
 type ClickupInstallation struct {
 	ID                pgtype.UUID        `json:"id"`
 	WorkspaceID       pgtype.UUID        `json:"workspace_id"`
@@ -616,6 +596,26 @@ type ClickupTaskLink struct {
 	CreatedByType   string             `json:"created_by_type"`
 	CreatedByID     pgtype.UUID        `json:"created_by_id"`
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+}
+
+type ClientUsageDaily struct {
+	UserID          pgtype.UUID        `json:"user_id"`
+	ClientType      string             `json:"client_type"`
+	InstallID       pgtype.UUID        `json:"install_id"`
+	ActivityDate    pgtype.Date        `json:"activity_date"`
+	WorkspaceID     pgtype.UUID        `json:"workspace_id"`
+	ClientVersion   string             `json:"client_version"`
+	Os              string             `json:"os"`
+	FirstActiveAt   pgtype.Timestamptz `json:"first_active_at"`
+	LastActiveAt    pgtype.Timestamptz `json:"last_active_at"`
+	RuntimeProbedAt pgtype.Timestamptz `json:"runtime_probed_at"`
+	ProbeResult     pgtype.Text        `json:"probe_result"`
+	RuntimeCount    pgtype.Int4        `json:"runtime_count"`
+	ProviderSummary []byte             `json:"provider_summary"`
+	OnlineCount     pgtype.Int4        `json:"online_count"`
+	OfflineCount    pgtype.Int4        `json:"offline_count"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
 }
 
 type Comment struct {
@@ -1833,6 +1833,16 @@ type WorkspaceInvitation struct {
 	ExpiresAt     pgtype.Timestamptz `json:"expires_at"`
 }
 
+type WorkspaceKnowledge struct {
+	ID           pgtype.UUID        `json:"id"`
+	WorkspaceID  pgtype.UUID        `json:"workspace_id"`
+	AgentID      pgtype.UUID        `json:"agent_id"`
+	Content      string             `json:"content"`
+	SourceTaskID pgtype.UUID        `json:"source_task_id"`
+	Status       string             `json:"status"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+}
+
 type WorkspaceMcpServer struct {
 	ID          pgtype.UUID        `json:"id"`
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
@@ -1854,14 +1864,4 @@ type WorkspaceShareLink struct {
 	UseCount    int32              `json:"use_count"`
 	IsActive    bool               `json:"is_active"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-}
-
-type WorkspaceKnowledge struct {
-	ID           pgtype.UUID        `json:"id"`
-	WorkspaceID  pgtype.UUID        `json:"workspace_id"`
-	AgentID      pgtype.UUID        `json:"agent_id"`
-	Content      string             `json:"content"`
-	SourceTaskID pgtype.UUID        `json:"source_task_id"`
-	Status       string             `json:"status"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 }
