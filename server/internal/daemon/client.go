@@ -1430,6 +1430,7 @@ func (c *Client) ListActiveKnowledge(ctx context.Context, workspaceID string) ([
 		req.Header.Set("Authorization", "Bearer "+c.token)
 	}
 	req.Header.Set("X-Workspace-ID", workspaceID)
+	c.setIdentityHeaders(req)
 
 	resp, err := c.client.Do(req)
 	if err != nil {

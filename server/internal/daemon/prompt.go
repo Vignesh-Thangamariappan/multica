@@ -213,7 +213,7 @@ func buildPromptBody(task Task, provider string) string {
 	if task.WakeupID != "" {
 		var b strings.Builder
 		fmt.Fprintf(&b, "You are running as a local coding agent for a Multica workspace.\n\nYour assigned issue ID is: %s\n\n[WAKEUP]\n%s\n\n", task.IssueID, task.HandoffNote)
-		fmt.Fprintf(&b, "Start by running `multica issue get %s --output json`, then read current run/comment state. Decide whether the instruction's goal is met; the trigger reports a fact, not business completion. This is an ordinary run with normal result delivery, except where the [WAKEUP] block offers a check-in.\n", task.IssueID)
+		fmt.Fprintf(&b, "Start by running `rtk multica issue get %s --output json`, then read current run/comment state. Decide whether the instruction's goal is met; the trigger reports a fact, not business completion. This is an ordinary run with normal result delivery, except where the [WAKEUP] block offers a check-in.\n", task.IssueID)
 		fmt.Fprintf(&b, "Scan comment threads with `multica issue comment list %s --roots-only --summary --compact --output json`, then expand relevant threads with `--thread <id> --tail 30`.\n", task.IssueID)
 		if task.WakeupSystemRule != "" {
 			// Platform rules belong to the issue, not to a run; members manage them.
@@ -550,8 +550,12 @@ func buildCommentPrompt(task Task, provider string) string {
 	if hint != "" {
 		b.WriteString(hint)
 	} else {
-		fmt.Fprintf(&b, "Read the discussion: scan with `multica issue comment list %s --roots-only --summary --compact --output json`, then expand what matters with `--thread <thread-id> --tail 30`.\n\n", task.IssueID)
+		fmt.Fprintf(&b, "Read the discussion: scan with `rtk multica issue comment list %s --roots-only --summary --compact --output json`, then expand what matters with `--thread <thread-id> --tail 30`.\n\n", task.IssueID)
 	}
+	// Fork rule: a comment trigger on a resumed session must not make the agent
+	// redo work it already finished.
+	b.WriteString("If the work requested was already completed in a previous session, do NOT redo it — reply with a concise summary of what was done.\n")
+	b.WriteString("Only do new or additional work if the comment explicitly asks for something that has not already been completed.\n")
 	// Reply routing. When this run coalesced comments spanning MORE THAN ONE
 	// root thread, answer each thread in its own thread instead of dumping one
 	// merged comment (MUL-4348). Same-thread follow-ups collapse to a single

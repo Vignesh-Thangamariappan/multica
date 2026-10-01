@@ -8547,13 +8547,6 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, slot i
 	if rootsValue, ok := composeOpenclawIncludeRoots(env.OpenclawIncludeRoot, os.Getenv("OPENCLAW_INCLUDE_ROOTS")); ok {
 		agentEnv["OPENCLAW_INCLUDE_ROOTS"] = rootsValue
 	}
-	// Gemini CLI's trust check runs in parallel with arg parsing, creating a
-	// race where `--skip-trust` may not have set the env var yet. Setting
-	// GEMINI_CLI_TRUST_WORKSPACE=true in the process environment before
-	// gemini starts is the canonical bypass that wins the race every time.
-	if provider == "gemini" {
-		agentEnv["GEMINI_CLI_TRUST_WORKSPACE"] = "true"
-	}
 	// Inject user-configured custom environment variables (e.g. ANTHROPIC_API_KEY,
 	// ANTHROPIC_BASE_URL for router/proxy mode, or CLAUDE_CODE_USE_BEDROCK for
 	// Bedrock). These are set per-agent via the agent settings UI.
@@ -9027,13 +9020,19 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, slot i
 		if errMsg == "" {
 			errMsg = fmt.Sprintf("%s execution %s", provider, result.Status)
 		}
-		// Attempt one self-correction retry before reporting failure.
-		if task.RetryCount == 0 {
+		// Attempt one self-correction retry before reporting failure. A failure
+		// that poisons the resumed session (corrupt image, oversized thread)
+		// would just re-resume the same poisoned session, so it is reported as-is
+		// and left to the poisoned-session handling below.
+		if poisoned, _ := classifyPoisonedError(errMsg); task.RetryCount == 0 && poisoned == "" && ctx.Err() == nil {
 			taskLog.Info("task failed, attempting self-correction retry", "error", errMsg)
 			retryTask := task
 			retryTask.RetryCount = 1
 			retryTask.PriorSessionID = result.SessionID
 			retryTask.RetryError = errMsg
+			// The nested run claims the env root again; drop this run's claim
+			// first or the second ClaimEnvRoot sees a live execution and fails.
+			envClaim.Release()
 			return d.runTask(ctx, retryTask, provider, slot, taskLog)
 		}
 

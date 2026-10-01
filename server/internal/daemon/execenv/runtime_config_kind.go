@@ -32,6 +32,9 @@ const (
 	kindQuickCreate
 	// kindChat: interactive chat session, no issue.
 	kindChat
+	// kindMeeting: one turn of a turn-based multi-agent meeting (fork). The
+	// reply text is the turn; there is no issue.
+	kindMeeting
 )
 
 // classifyTask maps a TaskContextForEnv to the single taskKind the slim
@@ -48,6 +51,8 @@ func classifyTask(ctx TaskContextForEnv) taskKind {
 		return kindChat
 	case ctx.QuickCreatePrompt != "":
 		return kindQuickCreate
+	case ctx.MeetingPrompt != "":
+		return kindMeeting
 	case ctx.AutopilotRunID != "":
 		return kindAutopilotRunOnly
 	default:

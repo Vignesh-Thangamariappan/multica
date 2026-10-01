@@ -979,6 +979,8 @@ func writeInlineBlocksPolicy(b *strings.Builder) {
 func writeOutput(b *strings.Builder, kind taskKind, ctx TaskContextForEnv) {
 	b.WriteString("## Output\n\n")
 	switch kind {
+	case kindMeeting:
+		writeOutputMeeting(b)
 	case kindAutopilotRunOnly:
 		b.WriteString("This is a run-only autopilot task, so there may be no issue comment to post. Your final assistant output is captured automatically as the autopilot run result. Keep it concise and state the outcome.\n\n")
 		b.WriteString("**Delivering files here:** this surface is text-only — the run result carries no attachments. Describe what you produced; do not link its path.\n")
@@ -1066,12 +1068,14 @@ func buildMetaSkillContentSlim(provider string, ctx TaskContextForEnv) string {
 	writeAgentIdentity(&b, ctx)
 	writeRequestingUser(&b, ctx)
 	writeWorkspaceContext(&b, ctx)
+	writeWorkspaceKnowledge(&b, ctx)
 
 	switch kind {
 	case kindQuickCreate:
 		writeAvailableCommandsQuickCreate(&b)
 	default:
 		writeAvailableCommands(&b, ctx)
+		writeKnowledgeCommands(&b)
 	}
 	writeIssueBodyFormatting(&b)
 
@@ -1079,7 +1083,7 @@ func buildMetaSkillContentSlim(provider string, ctx TaskContextForEnv) string {
 		writeCommentFormatting(&b)
 	}
 
-	if kind != kindQuickCreate {
+	if kind != kindQuickCreate && kind != kindMeeting {
 		writeRepositories(&b, ctx)
 	}
 
@@ -1099,6 +1103,8 @@ func buildMetaSkillContentSlim(provider string, ctx TaskContextForEnv) string {
 		writeWorkflowAutopilot(&b)
 	case kindIssue:
 		writeWorkflowIssue(&b, ctx)
+	case kindMeeting:
+		writeWorkflowMeeting(&b)
 	}
 
 	if kind.hasIssueContext() && ctx.IssueID != "" {
@@ -1116,6 +1122,7 @@ func buildMetaSkillContentSlim(provider string, ctx TaskContextForEnv) string {
 	}
 
 	writeAlwaysUseCLI(&b)
+	writeRTK(&b)
 	writeOutput(&b, kind, ctx)
 
 	return b.String()
