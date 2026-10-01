@@ -4,6 +4,9 @@ dist
 .DS_Store
 .envrc
 
+# accidentally-nested private repo (unrelated to this project); never track
+apps/desktop/Anywhere-IOS-Container
+
 # build outputs
 .turbo
 .next
