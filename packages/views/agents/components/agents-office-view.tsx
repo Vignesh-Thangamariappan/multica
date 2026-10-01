@@ -395,6 +395,8 @@ export function AgentsOfficeView({
             });
           },
           create(this: PhaserType.Scene) {
+            // Phaser scene callbacks need a stable reference to the scene.
+            // eslint-disable-next-line @typescript-eslint/no-this-alias
             const scene = this;
 
             // HiDPI: backing store at DPR, CSS at design size, camera zoom × DPR.

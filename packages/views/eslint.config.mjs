@@ -36,4 +36,15 @@ export default [
       ],
     },
   },
+  {
+    // Fork-owned UI (Meetings, Agent Office) ships English-only copy. These
+    // files are not part of upstream, so the i18n guards do not apply until
+    // the screens are moved onto useT() + locale bundles.
+    files: ["meetings/**/*.tsx", "agents/components/agents-office-*.tsx"],
+    ignores: ["**/*.test.tsx"],
+    rules: {
+      "i18next/no-literal-string": "off",
+      "no-restricted-syntax": "off",
+    },
+  },
 ];
