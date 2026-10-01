@@ -1050,9 +1050,7 @@ func writeClaudeSettings(workDir string, manifest *sidecarManifest) error {
 
 	return recordWriteFile(settingsPath, []byte(content), 0o644, manifest)
 }
-	}
-	if ctx.MeetingPrompt != "" {
-		return renderMeetingContext(ctx)
+
 // renderMeetingContext renders issue_context.md for meeting (debate-turn)
 // tasks. The full topic + transcript + turn instruction live in the per-turn
 // prompt (BuildPrompt → buildMeetingPrompt); this file is just a marker so a

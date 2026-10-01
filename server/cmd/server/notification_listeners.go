@@ -1127,7 +1127,7 @@ func notifyAutopilotRunDone(
 		return
 	}
 
-	recipients := resolveAutopilotOwnerRecipients(ctx, queries, autopilot)
+	recipients := resolveAutopilotPausedRecipients(ctx, queries, autopilot)
 	if len(recipients) == 0 {
 		return
 	}

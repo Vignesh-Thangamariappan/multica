@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -19,12 +20,24 @@ import (
 // is not configured. SetClickUpService swaps it in — at boot (router)
 // or at runtime via the admin SetClickUpKey flow.
 func (h *Handler) ClickUpService() *clickup.Service {
-	return h.clickupSvc.Load()
+	if h.clickupSvc == nil {
+		return nil
+	}
+	return h.clickupSvc.p.Load()
+}
+
+// clickupServiceHolder lets the live ClickUp service be swapped atomically
+// while Handler itself stays copyable.
+type clickupServiceHolder struct {
+	p atomic.Pointer[clickup.Service]
 }
 
 // SetClickUpService installs (or clears) the live ClickUp service.
 func (h *Handler) SetClickUpService(s *clickup.Service) {
-	h.clickupSvc.Store(s)
+	if h.clickupSvc == nil {
+		h.clickupSvc = &clickupServiceHolder{}
+	}
+	h.clickupSvc.p.Store(s)
 }
 
 // requireClickUp gates every ClickUp route on the service being

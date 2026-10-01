@@ -12,7 +12,6 @@ import (
 	"net/netip"
 	"strconv"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -27,7 +26,6 @@ import (
 	"github.com/multica-ai/multica/server/internal/entitlement"
 	"github.com/multica-ai/multica/server/internal/events"
 	"github.com/multica-ai/multica/server/internal/integrations/channel/engine"
-	"github.com/multica-ai/multica/server/internal/integrations/clickup"
 	composio "github.com/multica-ai/multica/server/internal/integrations/composio"
 	"github.com/multica-ai/multica/server/internal/integrations/dingtalk"
 	"github.com/multica-ai/multica/server/internal/integrations/ghsnapshot"
@@ -276,11 +274,18 @@ type Handler struct {
 	// deployment surfaces a clear error instead of silently using a
 	// zero key. Wired in cmd/server/router.go after handler.New.
 	// clickupSvc holds the ClickUp integration service (Phase 1: import
-	// & push-create). Nil when no secret key is configured — handlers
-	// return 503 / configured:false. Atomic because the admin "activate
-	// from the UI" flow (SetClickUpKey) swaps it in at runtime while
-	// other requests read it (docs/clickup-integration-rfc.md).
-	clickupSvc        atomic.Pointer[clickup.Service]
+	// & push-create). Nil service when no secret key is configured —
+	// handlers return 503 / configured:false. The service lives behind a
+	// shared holder because the admin "activate from the UI" flow
+	// (SetClickUpKey) swaps it in at runtime while other requests read it
+	// (docs/clickup-integration-rfc.md), and Handler is copied by value in
+	// places (atomic fields directly on Handler would trip copylocks).
+	clickupSvc *clickupServiceHolder
+	// Lark integration. All three are nil when the Lark master key
+	// (MULTICA_LARK_SECRET_KEY) is unset; the corresponding HTTP
+	// handlers return 403 in that case so a misconfigured self-host
+	// deployment surfaces a clear error instead of silently using a
+	// zero key. Wired in cmd/server/router.go after handler.New.
 	LarkInstallations *lark.InstallationService
 	LarkBindingTokens *lark.BindingTokenService
 	// LarkRegistration owns the device-flow install lifecycle: begin
@@ -490,6 +495,7 @@ func New(queries *db.Queries, txStarter txStarter, hub *realtime.Hub, bus *event
 	// a disabled client, which turns the feature off rather than failing.
 	taskSvc.QuickActions = llmClient
 	h := &Handler{
+		clickupSvc:                   &clickupServiceHolder{},
 		Queries:                      queries,
 		ReadSelector:                 dbreader.NewPrimaryOnly(queries),
 		DB:                           executor,
@@ -519,7 +525,7 @@ func New(queries *db.Queries, txStarter txStarter, hub *realtime.Hub, bus *event
 		WebhookIPRateLimiter:         NewMemoryWebhookIPRateLimiter(DefaultWebhookIPRateLimit()),
 		WebhookAbsoluteIPRateLimiter: NewMemoryWebhookAbsoluteIPRateLimiter(DefaultWebhookAbsoluteIPRateLimit()),
 		InvitationRateLimiters:       NewMemoryInvitationRateLimiters(DefaultInvitationRateLimits()),
-		MeetingService:        service.NewMeetingService(queries, bus, taskSvc),
+		MeetingService:               service.NewMeetingService(queries, bus, taskSvc),
 		CloudRuntime: cloudruntime.NewClient(cloudruntime.Config{
 			BaseURL: cfg.CloudURL,
 			Timeout: cfg.CloudTimeout,

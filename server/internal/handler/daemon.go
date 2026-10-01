@@ -3785,6 +3785,10 @@ func (h *Handler) ClaimTaskByRuntime(w http.ResponseWriter, r *http.Request) {
 		if failure.settled {
 			payloadBytes, _ = writeMeasuredJSON(w, http.StatusOK, map[string]any{"task": nil})
 			return
+		}
+		writeError(w, failure.status, failure.message)
+		return
+	}
 	// Meeting (debate-turn) task: the full per-turn prompt and the workspace
 	// live in the task's context JSONB — no issue / chat / autopilot link.
 	if task.Context != nil && !task.IssueID.Valid && !task.ChatSessionID.Valid && !task.AutopilotRunID.Valid {
@@ -3793,11 +3797,6 @@ func (h *Handler) ClaimTaskByRuntime(w http.ResponseWriter, r *http.Request) {
 			resp.MeetingPrompt = mc.Prompt
 			resp.WorkspaceID = mc.WorkspaceID
 		}
-	}
-
-		}
-		writeError(w, failure.status, failure.message)
-		return
 	}
 	commentBackedTask := task.TriggerCommentID.Valid || len(task.CoalescedCommentIds) > 0
 	requeueFailedClaim := func(reason string) {
