@@ -5019,6 +5019,15 @@ func (d *Daemon) handleUpdate(ctx context.Context, runtimeID string, update *Pen
 		return
 	}
 
+	if forkBuildPinned() {
+		d.logger.Info("refusing CLI self-update: fork build is pinned", "runtime_id", runtimeID, "update_id", update.ID)
+		d.reportUpdateResult(ctx, runtimeID, update.ID, map[string]any{
+			"status": "failed",
+			"error":  forkPinnedUpdateError,
+		})
+		return
+	}
+
 	switch d.tryBeginServerUpdate(ctx) {
 	case serverUpdateAlreadyRunning:
 		d.logger.Warn("update deferred: another update is already in progress", "runtime_id", runtimeID, "update_id", update.ID)

@@ -68,12 +68,11 @@ the **daemon binary**. An upstream release binary has none of them.
 
 - Desktop-managed daemons are safe: the app bundles a CLI built from this tree
   (`apps/desktop/scripts/bundle-cli.mjs`) and refuses self-update.
-- Standalone daemons (`make daemon`, `multica daemon start`): GitHub auto-update is
-  off for self-hosted servers and for non-release (`git describe`) builds, but a
-  **server-triggered runtime update** (the "update" action on a runtime in the UI)
-  downloads the upstream release and restarts into it. There is no daemon flag that
-  refuses it — do not trigger it on fork daemons; rebuild with `make daemon`
-  instead. `--no-auto-update` / `--no-auto-reload` only cover the other two paths.
+- Standalone daemons are pinned by `server/internal/daemon/fork_pin.go`: the
+  server-triggered runtime update and the GitHub auto-update are refused (the UI
+  shows the failure reason) unless `MULTICA_DAEMON_ALLOW_UPSTREAM_UPDATE=true`. To
+  upgrade, rebuild with `make daemon`. Hooks: `handleUpdate` (daemon.go) and
+  `tryAutoUpdate` (auto_update.go) — re-apply after each sync.
 
 ## Feature branches that only existed on `origin`
 

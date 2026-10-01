@@ -198,6 +198,9 @@ func (d *Daemon) tryAutoUpdate(ctx context.Context) {
 	if ctx.Err() != nil {
 		return
 	}
+	if forkBuildPinned() {
+		return
+	}
 	// Don't race the server-triggered update path. If a manual update from
 	// the Runtimes page is already in flight, let it finish and re-check next
 	// tick (by which time we'll either be on the new binary or it failed and
