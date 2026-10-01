@@ -41,6 +41,10 @@ Last sync: 2026-10-01 (`3a3159a14` → `ba30324e1`, branch `sync/upstream-2026-1
 
 ## Existing database upgrade (one-time, 2026-10 sync)
 
+Stop the **old** server first (the pre-migrate script renames applied fork rows, so
+the old binary would otherwise fail its readiness check trying to re-apply
+`149_workspace_knowledge`).
+
 ```bash
 pg_dump -Fc "$DATABASE_URL" > multica-pre-sync-$(date +%F).dump
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/fork-sync/pre-migrate-2026-10.sql
@@ -56,3 +60,25 @@ upstream migration `149_issue_origin_agent_create` aborts on the CHECK.
 - Telemetry is on by default (`DO_NOT_TRACK=1` turns it off).
 - Plugin surfaces: keep `MULTICA_PLUGIN_SECRET_KEY` / `MULTICA_PLUGIN_SURFACE_ORIGIN`
   unset until the plugin-bridge path allowlist bypass is fixed upstream.
+
+## Keep the daemon on the fork build
+
+Meetings, Workspace Knowledge, RTK prompts and the self-correction retry live in
+the **daemon binary**. An upstream release binary has none of them.
+
+- Desktop-managed daemons are safe: the app bundles a CLI built from this tree
+  (`apps/desktop/scripts/bundle-cli.mjs`) and refuses self-update.
+- Standalone daemons (`make daemon`, `multica daemon start`): GitHub auto-update is
+  off for self-hosted servers and for non-release (`git describe`) builds, but a
+  **server-triggered runtime update** (the "update" action on a runtime in the UI)
+  downloads the upstream release and restarts into it. There is no daemon flag that
+  refuses it — do not trigger it on fork daemons; rebuild with `make daemon`
+  instead. `--no-auto-update` / `--no-auto-reload` only cover the other two paths.
+
+## Feature branches that only existed on `origin`
+
+`origin/fix/autopilot-notifications` (1c9eeee1d) was never merged into `main` or
+`dev-desktop-minio`; its inbox-for-autopilot-issues fix is ported here
+(`origin_type: autopilot` + allowSelfNotify). Older `pre-rebase/round-*`,
+`stash/*`, `backup/*`, `feature/working` branches are earlier snapshots of work
+already in the tree.
