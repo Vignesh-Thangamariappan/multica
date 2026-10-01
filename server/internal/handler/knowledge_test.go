@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
@@ -118,6 +119,50 @@ func TestProposeKnowledge_UntrustedAgentHeaders_AttributedToMember(t *testing.T)
 			}
 			if resp.AgentID != nil {
 				t.Fatalf("expected proposal attributed to member (nil agent_id) for untrusted headers, got agent_id=%s", *resp.AgentID)
+			}
+		})
+	}
+}
+
+// TestProposeKnowledge_TaskTokenMalformedHeaders_Return400 covers the
+// task-token path, where resolveActor trusts X-Agent-ID without a UUID check:
+// the handler itself must reject a malformed X-Agent-ID / X-Task-ID with a 400
+// instead of feeding it to the panicking parseUUID. Regression test for the
+// header hardening lost in an earlier squash.
+func TestProposeKnowledge_TaskTokenMalformedHeaders_Return400(t *testing.T) {
+	h := &Handler{}
+	const validUUID = "11111111-1111-1111-1111-111111111111"
+
+	cases := []struct {
+		name        string
+		agentHeader string
+		taskHeader  string
+	}{
+		{"malformed X-Agent-ID", "not-a-uuid", ""},
+		{"malformed X-Task-ID", validUUID, "not-a-uuid"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/api/knowledge/propose",
+				strings.NewReader(`{"content":"some knowledge"}`))
+			rctx := chi.NewRouteContext()
+			rctx.URLParams.Add("id", validUUID)
+			req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+			req.Header.Set("X-Actor-Source", "task_token")
+			req.Header.Set("X-Agent-ID", tc.agentHeader)
+			if tc.taskHeader != "" {
+				req.Header.Set("X-Task-ID", tc.taskHeader)
+			}
+
+			w := httptest.NewRecorder()
+			defer func() {
+				if r := recover(); r != nil {
+					t.Fatalf("handler panicked: %v", r)
+				}
+			}()
+			h.ProposeWorkspaceKnowledge(w, req)
+			if w.Code != http.StatusBadRequest {
+				t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
 			}
 		})
 	}

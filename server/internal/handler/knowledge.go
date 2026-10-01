@@ -131,9 +131,17 @@ func (h *Handler) ProposeWorkspaceKnowledge(w http.ResponseWriter, r *http.Reque
 	var agentID pgtype.UUID
 	var taskID pgtype.UUID
 	if actorType == "agent" {
-		agentID = parseUUID(actorID)
+		// actorID / X-Task-ID ultimately come from request headers; parse them
+		// with the non-panicking variant so a malformed value is a 400, never a
+		// handler panic (task-token requests skip resolveActor's UUID checks).
+		var ok bool
+		if agentID, ok = parseUUIDOrBadRequest(w, actorID, "X-Agent-ID"); !ok {
+			return
+		}
 		if taskIDStr := r.Header.Get("X-Task-ID"); taskIDStr != "" {
-			taskID = parseUUID(taskIDStr)
+			if taskID, ok = parseUUIDOrBadRequest(w, taskIDStr, "X-Task-ID"); !ok {
+				return
+			}
 		}
 	}
 	entry, err := h.Queries.CreateWorkspaceKnowledge(r.Context(), db.CreateWorkspaceKnowledgeParams{

@@ -611,3 +611,23 @@ func TestS3StorageUploadedURL(t *testing.T) {
 		})
 	}
 }
+
+// TestS3Storage_KeyFromURL_PublicURL covers the fork's S3_PUBLIC_URL mapping:
+// a MinIO deployment whose internal endpoint differs from the browser-facing
+// URL must round-trip uploadedURL -> KeyFromURL with the full object key, or
+// deletes and avatar signing lose the "workspaces/<id>/" prefix.
+func TestS3Storage_KeyFromURL_PublicURL(t *testing.T) {
+	s := &S3Storage{
+		bucket:      "multica",
+		endpointURL: "http://minio:9000",
+		publicURL:   "http://localhost:9000/",
+	}
+	const key = "workspaces/ws-1/abc123.png"
+	url := s.uploadedURL(key)
+	if want := "http://localhost:9000/multica/" + key; url != want {
+		t.Fatalf("uploadedURL = %q, want %q", url, want)
+	}
+	if got := s.KeyFromURL(url); got != key {
+		t.Fatalf("KeyFromURL(%q) = %q, want %q", url, got, key)
+	}
+}

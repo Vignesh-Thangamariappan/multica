@@ -212,6 +212,14 @@ func (s *S3Storage) storageClass() types.StorageClass {
 //
 //	"https://my-bucket.s3.us-east-1.amazonaws.com/uploads/x/y.png" → "uploads/x/y.png"
 func (s *S3Storage) KeyFromURL(rawURL string) string {
+	// S3_PUBLIC_URL (fork): uploadedURL returns "<publicURL>/<bucket>/<key>", so
+	// strip exactly that prefix or keys lose their workspace path segments.
+	if s.publicURL != "" {
+		prefix := strings.TrimRight(s.publicURL, "/") + "/" + s.bucket + "/"
+		if strings.HasPrefix(rawURL, prefix) {
+			return strings.TrimPrefix(rawURL, prefix)
+		}
+	}
 	if s.endpointURL != "" {
 		for _, prefix := range []string{
 			customEndpointObjectPrefix(s.endpointURL, s.bucket, true),
