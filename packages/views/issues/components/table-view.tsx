@@ -1231,7 +1231,7 @@ function IssueTableBodyCell({
       return (
         <div onClick={stopRowNavigation} onAuxClick={stopRowNavigation}>
           <StartDatePicker
-            startDate={issue.start_date}
+            startDate={issue.start_date ?? null}
             onUpdate={onUpdate}
             open={editorOpen}
             onOpenChange={setEditorOpen}

@@ -508,7 +508,13 @@ function LinkPickerDialog({ onClose }: { onClose: () => void }) {
           <DialogDescription>{t(($) => $.clickup.picker_description)}</DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-3">
-          <Select value={projectId} onValueChange={(v) => setProjectId(v ?? "")}>
+          <Select
+            items={projects
+              .filter((p) => !linkedProjects.has(p.id))
+              .map((p) => ({ value: p.id, label: p.title }))}
+            value={projectId}
+            onValueChange={(v) => setProjectId(v ?? "")}
+          >
             <SelectTrigger>
               <SelectValue placeholder={t(($) => $.clickup.picker_project_placeholder)} />
             </SelectTrigger>
@@ -522,7 +528,11 @@ function LinkPickerDialog({ onClose }: { onClose: () => void }) {
                 ))}
             </SelectContent>
           </Select>
-          <Select value={listId} onValueChange={(v) => setListId(v ?? "")}>
+          <Select
+            items={allLists.map(({ list, label }) => ({ value: list.id, label }))}
+            value={listId}
+            onValueChange={(v) => setListId(v ?? "")}
+          >
             <SelectTrigger>
               <SelectValue
                 placeholder={

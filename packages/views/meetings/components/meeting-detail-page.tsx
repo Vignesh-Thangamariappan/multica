@@ -15,9 +15,9 @@ import { Button } from "@multica/ui/components/ui/button";
 import { Input } from "@multica/ui/components/ui/input";
 import { Spinner } from "@multica/ui/components/ui/spinner";
 import { ActorAvatar } from "@multica/ui/components/common/actor-avatar";
-import { Markdown } from "@multica/views/common/markdown";
 import { CreateTasksDialog, parseActionItems } from "./create-tasks-dialog";
 import { PageHeader } from "../../layout/page-header";
+import { RichContent } from "../../rich-content/rich-content";
 import { useNavigation } from "../../navigation";
 import { MeetingStatusBadge, MeetingTypeBadge } from "./meeting-bits";
 
@@ -137,7 +137,7 @@ export function MeetingDetailPage({ meetingId }: MeetingDetailPageProps) {
                 )}
               </div>
               <div className="prose prose-sm max-w-none text-sm">
-                <Markdown attachments={[]}>{meeting.summary}</Markdown>
+                <RichContent content={meeting.summary} />
               </div>
             </div>
           )}
@@ -204,7 +204,7 @@ function TranscriptRow({ msg, agentsById }: { msg: MeetingMessage; agentsById: M
             initials={name.slice(0, 2).toUpperCase()}
             avatarUrl={resolvePublicFileUrl(agent?.avatar_url ?? null)}
             isAgent
-            size={28}
+            size="lg"
             className="rounded-full"
           />
         )}

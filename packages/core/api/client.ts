@@ -4461,6 +4461,8 @@ export class ApiClient {
 
   async deleteIssueView(id: string): Promise<void> {
     await this.fetch(`/api/issue-views/${id}`, { method: "DELETE" });
+  }
+
   // Workspace knowledge — agent-proposed lessons gated by human review.
   async listKnowledge(status: string): Promise<WorkspaceKnowledge[]> {
     const raw = await this.fetch<unknown>(
@@ -4570,8 +4572,6 @@ export class ApiClient {
 
   async getIssueClickUpLink(issueId: string): Promise<ClickUpTaskLink> {
     return this.fetch(`/api/issues/${issueId}/clickup`);
-  }
-
   }
 
   async getIssueViewPreference(params: {

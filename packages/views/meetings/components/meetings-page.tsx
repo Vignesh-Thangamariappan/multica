@@ -15,7 +15,13 @@ import { Input } from "@multica/ui/components/ui/input";
 import { Label } from "@multica/ui/components/ui/label";
 import { Textarea } from "@multica/ui/components/ui/textarea";
 import { Checkbox } from "@multica/ui/components/ui/checkbox";
-import { NativeSelect, NativeSelectOption } from "@multica/ui/components/ui/native-select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@multica/ui/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -202,31 +208,47 @@ function NewMeetingDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="m-type">Type</Label>
-              <NativeSelect
-                id="m-type"
+              <Select
+                items={(Object.keys(MEETING_TYPE_LABELS) as MeetingType[]).map((t) => ({
+                  value: t,
+                  label: MEETING_TYPE_LABELS[t],
+                }))}
                 value={type}
-                onChange={(e) => setType(e.target.value as MeetingType)}
+                onValueChange={(v) => v && setType(v as MeetingType)}
               >
-                {(Object.keys(MEETING_TYPE_LABELS) as MeetingType[]).map((t) => (
-                  <NativeSelectOption key={t} value={t}>
-                    {MEETING_TYPE_LABELS[t]}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
+                <SelectTrigger id="m-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(MEETING_TYPE_LABELS) as MeetingType[]).map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {MEETING_TYPE_LABELS[t]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="m-rounds">Rounds</Label>
-              <NativeSelect
-                id="m-rounds"
+              <Select
+                items={[1, 2, 3, 4].map((r) => ({
+                  value: String(r),
+                  label: `${r} ${r === 1 ? "round" : "rounds"}`,
+                }))}
                 value={String(rounds)}
-                onChange={(e) => setRounds(Number(e.target.value))}
+                onValueChange={(v) => v && setRounds(Number(v))}
               >
-                {[1, 2, 3, 4].map((r) => (
-                  <NativeSelectOption key={r} value={String(r)}>
-                    {r} {r === 1 ? "round" : "rounds"}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
+                <SelectTrigger id="m-rounds">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[1, 2, 3, 4].map((r) => (
+                    <SelectItem key={r} value={String(r)}>
+                      {r} {r === 1 ? "round" : "rounds"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
