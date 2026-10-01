@@ -84,7 +84,7 @@ export function AgentsOfficePage() {
           <Building2 className="h-4 w-4 text-muted-foreground" />
           <h1 className="text-sm font-medium">Office</h1>
           {activeAgents.length > 0 && (
-            <span className="font-mono text-xs tabular-nums text-muted-foreground/70">
+            <span className="font-mono text-xs tabular-nums text-muted-foreground">
               {activeAgents.length}
             </span>
           )}

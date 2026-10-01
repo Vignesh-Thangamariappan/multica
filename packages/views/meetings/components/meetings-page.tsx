@@ -51,7 +51,7 @@ export function MeetingsPage() {
           <MessagesSquare className="h-4 w-4 text-muted-foreground" />
           <h1 className="text-sm font-medium">Meetings</h1>
           {meetings.length > 0 && (
-            <span className="font-mono text-xs tabular-nums text-muted-foreground/70">
+            <span className="font-mono text-xs tabular-nums text-muted-foreground">
               {meetings.length}
             </span>
           )}

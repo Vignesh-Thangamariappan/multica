@@ -216,7 +216,7 @@ function TranscriptRow({ msg, agentsById }: { msg: MeetingMessage; agentsById: M
             <span className="text-[10px] text-muted-foreground">round {msg.round}</span>
           )}
         </div>
-        <p className="mt-0.5 whitespace-pre-wrap text-sm text-foreground/90">{msg.content}</p>
+        <p className="mt-0.5 whitespace-pre-wrap text-sm text-foreground">{msg.content}</p>
       </div>
     </div>
   );
