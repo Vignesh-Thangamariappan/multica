@@ -28,7 +28,7 @@ type CreateClickUpInstallationParams struct {
 }
 
 // ClickUp integration queries (Phase 1). Tables defined in
-// server/migrations/150_clickup_integration.up.sql; design in
+// server/migrations/565_clickup_integration.up.sql; design in
 // docs/clickup-integration-rfc.md.
 //
 // Scoping convention follows lark.sql: HTTP handlers use the

@@ -49,7 +49,7 @@ Everything is gated by `MULTICA_CLICKUP_SECRET_KEY` and lives in
 All tables follow Lark conventions: composite FKs pinning `workspace_id`, cascade deletes,
 no plaintext secrets, audit without content.
 
-### 150_clickup_integration.up.sql
+### 565_clickup_integration.up.sql
 
 ```sql
 -- One connection per workspace. The personal token is AES-256-GCM ciphertext
@@ -122,7 +122,7 @@ CREATE TABLE clickup_sync_audit (
 CREATE INDEX clickup_sync_audit_link_idx ON clickup_sync_audit(link_id, created_at DESC);
 ```
 
-### 151_issue_origin_clickup.up.sql
+### 566_issue_origin_clickup.up.sql
 
 ```sql
 -- Extend issue origin tracking (house pattern: 060 autopilot, 111 lark_chat).
